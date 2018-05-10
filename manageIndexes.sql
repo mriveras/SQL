@@ -1,16 +1,21 @@
 CREATE PROCEDURE dbo.sp_manageIndexes
 	(
-		 @action    TINYINT              = 1    --(1) = Create | (2) = Drop | (3) = Status
-		,@type      TINYINT              = 2    --(1) = CLUSTERED INDEX | (2) = NON-CLUSTERED INDEX || Mandatory for Create
-		,@indexName NVARCHAR(128)        = NULL --Always Mandatory
-		,@schema    NVARCHAR(128)        = NULL --Mandatory for Create. As well for Drop if @indexName is not specified
-		,@table     NVARCHAR(128)        = NULL --Mandatory for Create. As well for Drop if @indexName is not specified
-		,@columns   NVARCHAR(500)        = NULL --Mandatory for Create. As well for Drop if @indexName is not specified
-		,@status    TINYINT       OUTPUT
-		,@message   VARCHAR(2000) OUTPUT
-		,@SQL       VARCHAR(1000) OUTPUT
+		 @action         TINYINT              = 1    --(1) = Create | (2) = Drop | (3) = Status
+		,@type           TINYINT              = 2    --(1) = CLUSTERED INDEX | (2) = NON-CLUSTERED INDEX || Mandatory for Create
+		,@indexName      NVARCHAR(128)        = NULL --Always Mandatory
+		,@schema         NVARCHAR(128)        = NULL --Mandatory for Create. As well for Drop if @indexName is not specified
+		,@table          NVARCHAR(128)        = NULL --Mandatory for Create. As well for Drop if @indexName is not specified
+		,@columns        NVARCHAR(500)        = NULL --Mandatory for Create. As well for Drop if @indexName is not specified
+		,@includeColumns NVARCHAR(500)        = NULL --Optional
+		,@status         TINYINT       OUTPUT
+		,@message        VARCHAR(2000) OUTPUT
+		,@SQL            VARCHAR(1000) OUTPUT
 	)
 AS
+/*
+	Developed by: Mauricio Rivera Senior
+	Description: This SP create, drop and gives the status of an index.
+*/
 BEGIN
 	IF(@type IS NULL)
 		SET @type = 2;
@@ -22,6 +27,8 @@ BEGIN
 		SET @table = '';
 	IF(@columns IS NULL)
 		SET @columns = '';
+	IF(@includeColumns IS NULL)
+		SET @includeColumns = '';
 	IF(@action IS NULL)
 		SET @action = 1;
 	
@@ -33,18 +40,20 @@ BEGIN
 		
 	DECLARE 
 	--PROCESS FLOW
-		 @continue                              BIT           = 1
-		,@sqlScripts                            NVARCHAR(MAX) = ''
-		,@INT                                   INT           = 0
+		 @continue                                    BIT           = 1
+		,@sqlScripts                                  NVARCHAR(MAX) = ''
+		,@INT                                         INT           = 0
 	--FLAGS
-		,@checkType                             BIT           = 0
-		,@checkIndexNameExists                  BIT           = 0
-		,@checkIndexNameNotExists               BIT           = 0
-		,@checkSchema                           BIT           = 0
-		,@checkTable                            BIT           = 0
-		,@checkColumns                          BIT           = 0
-		,@checkSchemaTableColumnsIndexNotExist  BIT           = 0
-		,@checkIndexNameSchemaTableExist        BIT           = 0
+		,@checkType                                   BIT           = 0
+		,@checkIndexNameExists                        BIT           = 0
+		,@checkIndexNameNotExists                     BIT           = 0
+		,@checkSchema                                 BIT           = 0
+		,@checkTable                                  BIT           = 0
+		,@checkColumns                                BIT           = 0
+		,@checkIncludeColumns                         BIT           = 0
+		,@checkSchemaTableColumnsIndexNotExist        BIT           = 0
+		,@checkSchemaTableColumnsIncColsIndexNotExist BIT           = 0
+		,@checkIndexNameSchemaTableExist              BIT           = 0
 		
 	--VALIDATING INPUT PARAMETER @action
 		IF(@action NOT IN (1,2,3))
@@ -68,6 +77,8 @@ BEGIN
 				SET @checkSchema                          = 1;
 				SET @checkTable                           = 1;
 				SET @checkColumns                         = 1;
+				IF(LEN(@includeColumns) > 1)
+					SET @checkIncludeColumns              = 1;
 				SET @checkSchemaTableColumnsIndexNotExist = 1;
 			END
 		ELSE IF(@continue = 1 AND @action = 2) --When @action is DROP INDEX
@@ -81,6 +92,8 @@ BEGIN
 				SET @checkSchema  = 1;
 				SET @checkTable   = 1;
 				SET @checkColumns = 1;
+				IF(LEN(@includeColumns) > 1)
+					SET @checkIncludeColumns = 1;
 			END
 			
 	--VALIDATIONS: (CHEKING INDEX TYPE)
@@ -166,6 +179,25 @@ BEGIN
 						SET @message  = 'The Columns specified (' + @columns + ') does not exist in the object (' + @schema + '.' + @table + ')';
 					END
 			END
+	--VALIDATIONS: (CHEKING INCLUDE COLUMNS)
+		IF(@continue = 1 AND @checkIncludeColumns = 1)
+			BEGIN
+				IF(
+					EXISTS(
+						SELECT 1
+						FROM
+							dbo.udf_DelimitedSplit8K(@includeColumns,',') a LEFT JOIN sys.columns b ON
+								    b.object_id = OBJECT_ID(@schema + N'.' + @table)
+								AND b.name = a.item
+				   		WHERE b.object_id IS NULL
+				   	)
+				)
+					BEGIN
+						SET @continue = 0;
+						SET @status   = 0;
+						SET @message  = 'The Include Columns specified (' + @includeColumns + ') does not exist in the object (' + @schema + '.' + @table + ')';
+					END
+			END
 	--VALIDATIONS: (CHEKING RELATION BETWEEN INDEX NAME, TABLE & SCHEMA)
 		IF(@continue = 1 AND @checkIndexNameSchemaTableExist = 1)
 			BEGIN
@@ -198,7 +230,7 @@ BEGIN
 							END
 					END
 			END
-	--VALIDATIONS: (CHEKING SCHEMA, TABLE, COLUMNS & INDEX NAME DOES NOT EXIST)
+	--VALIDATIONS: (CHEKING SCHEMA, TABLE, COLUMNS, INCLUDE COLUMNS & INDEX NAME DOES NOT EXIST)
 		IF(@continue = 1 AND @checkSchemaTableColumnsIndexNotExist = 1)
 			BEGIN
 				IF(
@@ -210,24 +242,44 @@ BEGIN
 									 i.name AS indexName
 									,s.name AS schemaName
 									,o.name AS tableName
-									,(
+									,ISNULL(
 										STUFF(
 											(
 												SELECT
 													',' + c2.name
 												FROM
 													sys.index_columns ic2 INNER JOIN sys.columns c2 ON
-														c2.object_id = ic2.object_id
+														    c2.object_id = ic2.object_id
 														AND c2.column_id = ic2.column_id
 												WHERE
-													ic2.object_id = i.object_id
-													AND ic2.index_id = i.index_id
+													    ic2.object_id   = i.object_id
+													AND ic2.index_id    = i.index_id
+													AND ic2.key_ordinal > 0
 												ORDER BY
 													ic2.index_column_id ASC 
 												FOR XML PATH(''), TYPE
 											).value('.', 'VARCHAR(MAX)'), 1, 1, ''
 										)
-									) AS IndexColumns
+									,'') AS IndexColumns
+									,ISNULL(
+										STUFF(
+											(
+												SELECT
+													',' + c2.name
+												FROM
+													sys.index_columns ic2 INNER JOIN sys.columns c2 ON
+														    c2.object_id = ic2.object_id
+														AND c2.column_id = ic2.column_id
+												WHERE
+													ic2.object_id       = i.object_id
+													AND ic2.index_id    = i.index_id
+													AND ic2.key_ordinal = 0
+												ORDER BY
+													ic2.index_column_id ASC 
+												FOR XML PATH(''), TYPE
+											).value('.', 'VARCHAR(MAX)'), 1, 1, ''
+										)
+									,'') AS IncludeColumns
 								FROM 
 									sys.indexes i INNER JOIN sys.objects o ON
 										o.object_id = i.object_id
@@ -239,7 +291,8 @@ BEGIN
 									AND o.name     = @table
 							) aa
 						WHERE
-							aa.IndexColumns = @columns
+							    aa.IndexColumns   = @columns
+							AND aa.IncludeColumns = @includeColumns
 					)
 				)
 					BEGIN
@@ -265,11 +318,16 @@ BEGIN
 								END
 							
 							SET @sqlScripts = @sqlScripts + @indexName + N' ON ' + @schema + N'.' + @table + N' (' + @columns + ')';
-											
+							
+							IF(@checkIncludeColumns  = 1)
+								BEGIN
+									SET @sqlScripts = @sqlScripts + N' INCLUDE (' + @includeColumns + ')'
+								END
+								
 							EXEC(@sqlScripts);
 							
 							IF(
-								EXISTS(									
+								EXISTS(
 									SELECT 1
 									FROM
 										(
@@ -277,24 +335,44 @@ BEGIN
 												 i.name AS indexName
 												,s.name AS schemaName
 												,o.name AS tableName
-												,(
+												,ISNULL(
 													STUFF(
 														(
 															SELECT
 																',' + c2.name
 															FROM
 																sys.index_columns ic2 INNER JOIN sys.columns c2 ON
-																	c2.object_id = ic2.object_id
+																	    c2.object_id = ic2.object_id
 																	AND c2.column_id = ic2.column_id
 															WHERE
-																ic2.object_id = i.object_id
-																AND ic2.index_id = i.index_id
+																    ic2.object_id   = i.object_id
+																AND ic2.index_id    = i.index_id
+																AND ic2.key_ordinal > 0
 															ORDER BY
 																ic2.index_column_id ASC 
 															FOR XML PATH(''), TYPE
 														).value('.', 'VARCHAR(MAX)'), 1, 1, ''
 													)
-												) AS IndexColumns
+												,'') AS IndexColumns
+												,ISNULL(
+													STUFF(
+														(
+															SELECT
+																',' + c2.name
+															FROM
+																sys.index_columns ic2 INNER JOIN sys.columns c2 ON
+																	    c2.object_id = ic2.object_id
+																	AND c2.column_id = ic2.column_id
+															WHERE
+																ic2.object_id       = i.object_id
+																AND ic2.index_id    = i.index_id
+																AND ic2.key_ordinal = 0
+															ORDER BY
+																ic2.index_column_id ASC 
+															FOR XML PATH(''), TYPE
+														).value('.', 'VARCHAR(MAX)'), 1, 1, ''
+													)
+												,'') AS IncludeColumns
 											FROM 
 												sys.indexes i INNER JOIN sys.objects o ON
 													o.object_id = i.object_id
@@ -306,7 +384,8 @@ BEGIN
 												AND o.name     = @table
 										) aa
 									WHERE
-										aa.IndexColumns = @columns
+										    aa.IndexColumns   = @columns
+										AND aa.IncludeColumns = @includeColumns
 								)
 							)
 								BEGIN
@@ -318,6 +397,7 @@ BEGIN
 									SET @status  = 0;
 									SET @message = 'Index creation fail';
 								END 
+								
 						END TRY
 						BEGIN CATCH
 							SET @status  = 0;
@@ -366,24 +446,44 @@ BEGIN
 											 i.name AS indexName
 											,s.name AS schemaName
 											,o.name AS tableName
-											,(
+											,ISNULL(
 												STUFF(
 													(
 														SELECT
 															',' + c2.name
 														FROM
 															sys.index_columns ic2 INNER JOIN sys.columns c2 ON
-																c2.object_id = ic2.object_id
+																    c2.object_id = ic2.object_id
 																AND c2.column_id = ic2.column_id
 														WHERE
-															ic2.object_id = i.object_id
-															AND ic2.index_id = i.index_id
+															    ic2.object_id   = i.object_id
+															AND ic2.index_id    = i.index_id
+															AND ic2.key_ordinal > 0
 														ORDER BY
 															ic2.index_column_id ASC 
 														FOR XML PATH(''), TYPE
 													).value('.', 'VARCHAR(MAX)'), 1, 1, ''
 												)
-											) AS IndexColumns
+											,'') AS IndexColumns
+											,ISNULL(
+												STUFF(
+													(
+														SELECT
+															',' + c2.name
+														FROM
+															sys.index_columns ic2 INNER JOIN sys.columns c2 ON
+																    c2.object_id = ic2.object_id
+																AND c2.column_id = ic2.column_id
+														WHERE
+															ic2.object_id       = i.object_id
+															AND ic2.index_id    = i.index_id
+															AND ic2.key_ordinal = 0
+														ORDER BY
+															ic2.index_column_id ASC 
+														FOR XML PATH(''), TYPE
+													).value('.', 'VARCHAR(MAX)'), 1, 1, ''
+												)
+											,'') AS IncludeColumns
 										FROM 
 											sys.indexes i INNER JOIN sys.objects o ON
 												o.object_id = i.object_id
@@ -395,7 +495,8 @@ BEGIN
 											AND o.name     = @table
 									) aa
 								WHERE
-									aa.IndexColumns = @columns
+									    aa.IndexColumns   = @columns
+									AND aa.IncludeColumns = @includeColumns
 							)
 						)
 							BEGIN
