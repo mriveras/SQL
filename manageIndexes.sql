@@ -173,7 +173,9 @@ BEGIN
 							dbo.udf_DelimitedSplit8K(@columns,',') a LEFT JOIN sys.columns b ON
 								    b.object_id = OBJECT_ID(@schema + N'.' + @table)
 								AND '[' + b.name + ']' = a.item
-				   		WHERE b.object_id IS NULL
+				   		WHERE 
+							    b.object_id IS NULL
+							AND a.item <> ''
 				   	)
 				)
 					BEGIN
@@ -192,7 +194,9 @@ BEGIN
 							dbo.udf_DelimitedSplit8K(@includeColumns,',') a LEFT JOIN sys.columns b ON
 								    b.object_id = OBJECT_ID(@schema + N'.' + @table)
 								AND '[' + b.name + ']' = a.item
-				   		WHERE b.object_id IS NULL
+				   		WHERE 
+							    b.object_id IS NULL
+							AND a.item <> ''
 				   	)
 				)
 					BEGIN
