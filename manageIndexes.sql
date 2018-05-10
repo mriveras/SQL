@@ -32,12 +32,15 @@ BEGIN
 	IF(@action IS NULL)
 		SET @action = 1;
 	
-	SET @indexName = RTRIM(LTRIM(@indexName));
-	SET @schema    = RTRIM(LTRIM(@schema));
-	SET @table     = RTRIM(LTRIM(@table));
-	SET @columns   = RTRIM(LTRIM(@columns));
-	SET @SQL       = '';
-		
+	SET @indexName      = RTRIM(LTRIM(@indexName));
+	SET @schema         = RTRIM(LTRIM(@schema));
+	SET @table          = RTRIM(LTRIM(@table));
+	SET @columns        = RTRIM(LTRIM(@columns));
+	SET @SQL            = '';
+	SET @columns        = '[' + REPLACE(REPLACE(REPLACE(@columns,']',''),'[',''),',','],[') + ']';
+	IF(LEN(@includeColumns) > 0)
+		SET @includeColumns = '[' + REPLACE(REPLACE(REPLACE(@includeColumns,']',''),'[',''),',','],[') + ']';
+	
 	DECLARE 
 	--PROCESS FLOW
 		 @continue                                    BIT           = 1
@@ -169,7 +172,7 @@ BEGIN
 						FROM
 							dbo.udf_DelimitedSplit8K(@columns,',') a LEFT JOIN sys.columns b ON
 								    b.object_id = OBJECT_ID(@schema + N'.' + @table)
-								AND b.name = a.item
+								AND '[' + b.name + ']' = a.item
 				   		WHERE b.object_id IS NULL
 				   	)
 				)
@@ -188,7 +191,7 @@ BEGIN
 						FROM
 							dbo.udf_DelimitedSplit8K(@includeColumns,',') a LEFT JOIN sys.columns b ON
 								    b.object_id = OBJECT_ID(@schema + N'.' + @table)
-								AND b.name = a.item
+								AND '[' + b.name + ']' = a.item
 				   		WHERE b.object_id IS NULL
 				   	)
 				)
@@ -246,7 +249,7 @@ BEGIN
 										STUFF(
 											(
 												SELECT
-													',' + c2.name
+													',[' + c2.name + ']'
 												FROM
 													sys.index_columns ic2 INNER JOIN sys.columns c2 ON
 														    c2.object_id = ic2.object_id
@@ -265,7 +268,7 @@ BEGIN
 										STUFF(
 											(
 												SELECT
-													',' + c2.name
+													',[' + c2.name + ']'
 												FROM
 													sys.index_columns ic2 INNER JOIN sys.columns c2 ON
 														    c2.object_id = ic2.object_id
@@ -339,7 +342,7 @@ BEGIN
 													STUFF(
 														(
 															SELECT
-																',' + c2.name
+																',[' + c2.name + ']'
 															FROM
 																sys.index_columns ic2 INNER JOIN sys.columns c2 ON
 																	    c2.object_id = ic2.object_id
@@ -358,7 +361,7 @@ BEGIN
 													STUFF(
 														(
 															SELECT
-																',' + c2.name
+																',[' + c2.name + ']'
 															FROM
 																sys.index_columns ic2 INNER JOIN sys.columns c2 ON
 																	    c2.object_id = ic2.object_id
@@ -450,7 +453,7 @@ BEGIN
 												STUFF(
 													(
 														SELECT
-															',' + c2.name
+															',[' + c2.name + ']'
 														FROM
 															sys.index_columns ic2 INNER JOIN sys.columns c2 ON
 																    c2.object_id = ic2.object_id
@@ -469,7 +472,7 @@ BEGIN
 												STUFF(
 													(
 														SELECT
-															',' + c2.name
+															',[' + c2.name + ']'
 														FROM
 															sys.index_columns ic2 INNER JOIN sys.columns c2 ON
 																    c2.object_id = ic2.object_id
