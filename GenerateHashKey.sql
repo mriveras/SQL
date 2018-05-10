@@ -11,6 +11,17 @@ CREATE PROCEDURE [dbo].[sp_generateHashKey]
 		,@loggingType           SMALLINT      = 1 --1) Table | 2) DataGovernor | 3) Table & DataGovernor
 	)
 AS
+/*
+	Developed by: Mauricio Rivera
+	Date: 10 May 2018
+	
+	MODIFICATIONS
+		
+		
+	LAST USED LOGGING IDS:
+		- ERRORS      (COD-1400E)
+		- INFORMATION (COD-500I)
+*/
 BEGIN
 	--Transforming input parameter from NULL to ''
 		IF(@sourceSchema IS NULL)
@@ -743,7 +754,7 @@ BEGIN
 										IF(@debug = 1)
 											BEGIN
 												SET @logTreeLevel = 4;
-												SET @scriptCode   = '';
+												SET @scriptCode   = 'COD-100I';
 												SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL Script';
 												SET @status       = 'Information';
 												SET @SQL          = @sqlScript;
@@ -976,7 +987,7 @@ WHERE ';
 									IF(@debug = 1)
 										BEGIN
 											SET @logTreeLevel = 4;
-											SET @scriptCode   = '';
+											SET @scriptCode   = 'COD-200I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL Script';
 											SET @status       = 'Information';
 											SET @SQL          = @sqlScript;
@@ -1094,7 +1105,7 @@ WHERE ';
 												IF(@debug = 1)
 													BEGIN
 														SET @logTreeLevel = 4;
-														SET @scriptCode   = '';
+														SET @scriptCode   = 'COD-300I';
 														SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL Script';
 														SET @status       = 'Information';
 														SET @SQL          = @sqlScript;
@@ -1192,7 +1203,7 @@ WHERE ';
 										IF(@debug = 1)
 											BEGIN
 												SET @logTreeLevel = 4;
-												SET @scriptCode   = 'COD-I';
+												SET @scriptCode   = 'COD-400I';
 												SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL Script';
 												SET @status       = 'Information';
 												SET @SQL          = @sqlScript;
@@ -1291,7 +1302,7 @@ WHERE ';
 												IF(@debug = 1)
 													BEGIN
 														SET @logTreeLevel = 4;
-														SET @scriptCode   = '';
+														SET @scriptCode   = 'COD-500I';
 														SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL Script';
 														SET @status       = 'Information';
 														SET @SQL          = @sqlScript;
