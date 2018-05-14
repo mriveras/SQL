@@ -274,7 +274,7 @@ BEGIN
 													ELSE N' NOT NULL'
 												END
 											ELSE 
-												N'SQL Error: Convertion Error Found | SQL Script: ' + @alterTableScript + N' ALTER COLUMN ([' + columnName + N'] ' + 
+												/*N'Error: ' + @alterTableScript + N' ALTER COLUMN ([' + columnName + N'] ' + 
 												CASE 
 													WHEN (precision_source = 0) THEN 
 														CASE
@@ -306,23 +306,8 @@ BEGIN
 												CASE
 													WHEN (is_nullable_destination = 1) THEN N' NULL'
 													ELSE N' NOT NULL'
-												END + N' To: ' + 
-												CASE 
-													WHEN (precision_source = 0) THEN 
-														CASE
-															WHEN (dataType_source IN (N'nvarchar',N'nchar',N'ntext')) THEN N' ' + UPPER(dataType_source COLLATE DATABASE_DEFAULT) + N'(' + CAST(max_length_source / 2 AS NVARCHAR(5)) + N')' 
-															ELSE N' ' + UPPER(dataType_source COLLATE DATABASE_DEFAULT) + N'(' + CAST(max_length_source AS NVARCHAR(5)) + N')'
-														END
-													ELSE 
-														CASE
-															WHEN (dataType_source IN (N'decimal',N'numeric')) THEN N' ' + UPPER(dataType_source COLLATE DATABASE_DEFAULT) + N'(' + CAST(precision_source AS NVARCHAR(4)) + N',' + CAST(scale_source AS NVARCHAR(5)) + N')' 
-															ELSE N' ' + UPPER(dataType_source COLLATE DATABASE_DEFAULT)
-														END
-												END + 
-												CASE
-													WHEN (is_nullable_source = 1) THEN N' NULL'
-													ELSE N' NOT NULL'
-												END
+												END */
+												''
 										END
 									ELSE
 										@alterTableScript + N'  ALTER COLUMN  [' + columnName + N'] ' + CASE 
@@ -393,86 +378,101 @@ BEGIN
 							AND @alterDataType = 1
 						);		 			   
 			END
+
 /*#####################################################################################################################################################################################
 ##                                                                 S  R  I  P  T  S        E  X  E  C  U  T  I  O  N                                                                 ##
 #####################################################################################################################################################################################*/
-	IF(
-		NOT EXISTS(
-			SELECT 1
-			FROM @DHI_columnsToFix
-		)
-	)
+	IF(@continue = 1 )
 		BEGIN
-			SET @message = 'No differences found';
-		END
-	ELSE
-		BEGIN
-			--CHECK IF THERE IS A CONVERTION ERROR
-				IF(
-					EXISTS(
-						SELECT 1
-						FROM @DHI_columnsToFix a
-						WHERE a.scripts LIKE '%ERROR%'
-					)
+			IF(
+				NOT EXISTS(
+					SELECT 1
+					FROM @DHI_columnsToFix
+					WHERE scripts <> ''
 				)
-					BEGIN
-						SET @continue = 0;
-						SET @message  = 'Convertion error Found';
-						SET @SQL      = (SELECT scripts FROM @DHI_columnsToFix);
-					END
-					
-			--EXECUTING SCRIPTS
-				IF(@continue = 1)
-					BEGIN
-						BEGIN TRANSACTION
-						
-							IF (SELECT CURSOR_STATUS('global','hos_cursor')) >= -1
-								BEGIN
-									DEALLOCATE hos_cursor;
-								END
-							
-							DECLARE hos_cursor CURSOR LOCAL FOR						
-								SELECT 
-									 a.action
-									,a.scripts
-								FROM @DHI_columnsToFix a;
-							
-							OPEN hos_cursor;
-							
-							FETCH NEXT FROM hos_cursor INTO @action,@sqlScripts;
-							
-							WHILE (@@FETCH_STATUS = 0 AND @continue = 1)
-								BEGIN
-									BEGIN TRY
-										EXEC(@sqlScripts);
-									END TRY
-									BEGIN CATCH
-										SET @continue = 0;
-										SET @message  = 'An error occurred while trying to ' + @action + ' a Column in the Table ' + @objectTo;
-										SET @SQL      = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'') + ' SCRIPT: ' + @sqlScripts;
-									END CATCH				
-									FETCH NEXT FROM hos_cursor INTO @action,@sqlScripts;
-								END
-							
-							CLOSE hos_cursor;
-							
-							IF (SELECT CURSOR_STATUS('global','hos_cursor')) >= -1
-								BEGIN
-									DEALLOCATE hos_cursor;
-								END
-						
+			)
+				BEGIN
+					SET @message = 'No differences found';
+				END
+			ELSE
+				BEGIN
+					--CHECK IF THERE IS A CONVERTION ERROR
+						IF(
+							EXISTS(
+								SELECT 1
+								FROM @DHI_columnsToFix a
+								WHERE a.scripts LIKE '%ERROR%'
+							)
+						)
+							BEGIN
+								SET @continue = 0;
+								SET @message  = 'Convertion error Found';
+								SET @SQL      = (
+									SELECT 
+										STUFF(
+											( 
+												SELECT ' || ' + scripts 
+												FROM @DHI_columnsToFix
+												FOR XML PATH(''), TYPE
+											).value('.', 'VARCHAR(MAX)'), 1, 4, ''
+										)
+								);
+							END
+
+					--EXECUTING SCRIPTS
 						IF(@continue = 1)
 							BEGIN
-								COMMIT TRANSACTION
-								SELECT @INT = COUNT(*) FROM @DHI_columnsToFix;
-								SET @message  = '(' + CAST(@INT AS VARCHAR(3)) + ') differences processed successfully';
+								BEGIN TRANSACTION
 								
-							END	
-						ELSE
-							BEGIN
-								ROLLBACK TRANSACTION
+									IF (SELECT CURSOR_STATUS('global','hos_cursor')) >= -1
+										BEGIN
+											DEALLOCATE hos_cursor;
+										END
+									
+									DECLARE hos_cursor CURSOR LOCAL FOR						
+										SELECT 
+											 a.action
+											,a.scripts
+										FROM @DHI_columnsToFix a
+										WHERE scripts <> '';
+									
+									OPEN hos_cursor;
+									
+									FETCH NEXT FROM hos_cursor INTO @action,@sqlScripts;
+									
+									WHILE (@@FETCH_STATUS = 0 AND @continue = 1)
+										BEGIN
+											BEGIN TRY
+												EXEC(@sqlScripts);
+											END TRY
+											BEGIN CATCH
+												SET @continue = 0;
+												SET @message  = 'An error occurred while trying to ' + @action + ' a Column in the Table ' + @objectTo;
+												SET @SQL      = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'') + ' SCRIPT: ' + @sqlScripts;
+											END CATCH			   
+											FETCH NEXT FROM hos_cursor INTO @action,@sqlScripts;
+										END
+									
+									CLOSE hos_cursor;
+									
+									IF (SELECT CURSOR_STATUS('global','hos_cursor')) >= -1
+										BEGIN
+											DEALLOCATE hos_cursor;
+										END
+								
+								IF(@continue = 1)
+									BEGIN
+										COMMIT TRANSACTION
+										SELECT @INT = COUNT(*) FROM @DHI_columnsToFix;
+										SET @message  = '(' + CAST(@INT AS VARCHAR(3)) + ') differences processed successfully';
+										
+									END	
+								ELSE
+									BEGIN
+										ROLLBACK TRANSACTION
+									END
 							END
-					END
+				END
 		END
 	
 	SET @status = @continue;
