@@ -273,7 +273,8 @@ BEGIN
 													WHEN (is_nullable_source = 1) THEN N' NULL'
 													ELSE N' NOT NULL'
 												END
-											ELSE 
+											ELSE ''
+											--THE FOLLOWING COMMENTED CODE, GENERATES AN ERROR WHEN A DATA CONVERSION COMPROMISE DATA. IF YOU WANT TO RISE THIS ERRORS. UNCOMMENT THE SCRIPT AND REMOVE THE [BLANK] '' CARACTER SET BEFORE THIS BLOCK.
 												/*N'Error: ' + @alterTableScript + N' ALTER COLUMN ([' + columnName + N'] ' + 
 												CASE 
 													WHEN (precision_source = 0) THEN 
@@ -307,7 +308,6 @@ BEGIN
 													WHEN (is_nullable_destination = 1) THEN N' NULL'
 													ELSE N' NOT NULL'
 												END */
-												''
 										END
 									ELSE
 										@alterTableScript + N'  ALTER COLUMN  [' + columnName + N'] ' + CASE 
