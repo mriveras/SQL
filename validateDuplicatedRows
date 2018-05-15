@@ -1,0 +1,112 @@
+CREATE PROCEDURE dbo.sp_validateDuplicatedRows
+	(
+		 @schema       NVARCHAR(128)
+		,@ObjectName   NVARCHAR(128)
+		,@KeyColumns   NVARCHAR(128)
+		,@status       TINYINT       OUTPUT
+		,@message      VARCHAR(2000) OUTPUT
+		,@SQL          VARCHAR(1000) OUTPUT
+	)
+AS
+/*
+	Developed by Mauricio Rivera Senior
+	Description
+		This Procedure will check if exist any duplication in the columns specified through @KeyColumns in the object @schema . @ObjectName. 
+        The result is returned by @status (1 no duplication, 0 duplications found or an error happened)
+	
+*/
+BEGIN
+	DECLARE
+	--PROCESS FLOW VARIABLES
+		 @continue   SMALLINT      = 1
+		,@sqlScripts NVARCHAR(MAX) = N''
+		,@INT        INT           = 0
+	--GENERAL VARIABLES
+		,@object     NVARCHAR(256) = N'';
+	
+	SET @message    = '';
+	SET @SQL        = '';
+	SET @object     = @schema + N'.' + @ObjectName;
+   	SET @KeyColumns = '[' + REPLACE(REPLACE(REPLACE(@KeyColumns,']',''),'[',''),',','],[') + ']';
+   	
+	IF(@continue = 1)
+		BEGIN 
+			IF(SCHEMA_ID(@schema) IS NULL)
+				BEGIN
+					SET @continue = 0;
+					SET @message  = 'Input parameter @schema (' + ISNULL(@schema,'') + ') is wrong';
+				END 
+			ELSE IF(OBJECT_ID(@object) IS NULL)
+				BEGIN
+					SET @continue = 0;
+					SET @message  = 'Input parameter @ObjectName (' + ISNULL(@object,'') + ') is wrong';
+				END 
+			ELSE IF(
+				NOT EXISTS(
+					SELECT 1
+					FROM sys.objects a
+					WHERE
+						a.object_id = OBJECT_ID(@object)
+						AND a.type IN ('U','V')
+				)
+			)
+				BEGIN
+					SET @continue = 0;
+					SET @message  = 'The object (' + @object + ') needs to be a Table or a View';
+				END 
+			ELSE IF(
+				EXISTS(
+					SELECT 1
+					FROM
+						dbo.udf_DelimitedSplit8K(@KeyColumns,',') a LEFT JOIN sys.columns b ON
+							    b.object_id        = OBJECT_ID(@object)
+							AND '[' + b.name + ']' = a.item
+					WHERE 
+						    b.object_id IS NULL
+						AND a.item <> ''
+				)
+			)
+				BEGIN
+					SET @continue = 0;
+					SET @message  = 'The Key Columns provided in @KeyColumns does not exist in (' + @object + ')';
+				END
+		END
+
+	IF(@continue = 1)
+		BEGIN
+			IF(OBJECT_ID('tempdb..##BI_VPR') IS NOT NULL)
+				DROP TABLE ##BI_VPR;
+				
+			SET @sqlScripts = 'SELECT ' + @KeyColumns + ', COUNT(*) AS BI_rowCount INTO ##BI_VPR FROM ' + @object + ' GROUP BY ' + @KeyColumns + ' HAVING COUNT(*) > 1 ORDER BY COUNT(*) DESC';
+							
+			BEGIN TRY
+				EXEC(@sqlScripts);
+				
+				IF(
+					NOT EXISTS(
+						SELECT 1
+						FROM ##BI_VPR
+					)
+				)
+					BEGIN
+						SET @message = 'No duplications found';
+					END
+				ELSE
+					BEGIN
+						SET @continue = 0;
+						SET @INT      = (SELECT COUNT(*) FROM ##BI_VPR);
+						SET @message  = '(' + CONVERT(VARCHAR(20),@INT) + ') Duplications found';
+					END
+			END TRY
+			BEGIN CATCH
+				SET @continue = 0;
+				SET @message  = 'Error while trying to validate duplications';
+				SET @SQL      = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+			END CATCH
+		END
+	
+	SET @status = @continue;
+	
+	IF(OBJECT_ID('tempdb..##BI_VPR') IS NOT NULL)
+		DROP TABLE ##BI_VPR;
+END
