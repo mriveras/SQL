@@ -14,9 +14,6 @@ AS
 /*
 	Developed by: Mauricio Rivera
 	Date: 10 May 2018
-	
-	MODIFICATIONS
-		
 		
 	LAST USED LOGGING IDS:
 		- ERRORS      (COD-1400E)
@@ -893,6 +890,9 @@ BEGIN
 																											WHEN c.[precision] = 0 THEN --Data Types Strings and TimeStamp
 																												CASE 
 																													WHEN (UPPER(c.name) = 'TIMESTAMP') THEN NULL --NULL is to exclude TimeStamp columns
+																													WHEN (UPPER(c.name) = 'UNIQUEIDENTIFIER') THEN
+'
+				ISNULL(CONVERT(VARCHAR(36),a.[' + b.name + ']),''¿'') + ''±''' --UniqueIdentifier Columns
 																													ELSE 
 '
 				ISNULL(CONVERT(VARCHAR(' + CONVERT(NVARCHAR(10),b.max_length) + '),a.[' + b.name + ']),''¿'') + ''±''' --String Columns
@@ -966,7 +966,7 @@ BEGIN
 																								    c.system_type_id = b.system_type_id
 																								AND c.user_type_id   = b.user_type_id
 																						WHERE
-																							     b.name NOT IN ('BI_HFR','LoadDateTime','ProcessExecutionID')
+																							     b.name NOT IN ('BI_HFR','LoadDateTime','ProcessExecutionID','uniqueID')
 																							 AND a.object_id = @sourceObjectId
 																						ORDER BY
 																							b.column_id ASC
