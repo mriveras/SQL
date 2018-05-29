@@ -14,6 +14,9 @@ AS
 /*
 	Developed by: Mauricio Rivera
 	Date: 10 May 2018
+	
+	MODIFICATIONS
+		
 		
 	LAST USED LOGGING IDS:
 		- ERRORS      (COD-1400E)
@@ -42,11 +45,25 @@ BEGIN
 		IF(@loggingType IS NULL)
 			SET @loggingType = '';
 	
+	--checking sequence
+		IF(
+			NOT EXISTS(
+				SELECT 1
+				FROM sys.sequences 
+				WHERE name = 'sq_BI_log_executionID'
+			)
+		)
+			BEGIN
+				CREATE SEQUENCE dbo.sq_BI_log_executionID
+			    	START     WITH 1  
+			    	INCREMENT BY   1; 
+			END
+			
 	IF(OBJECT_ID('dbo.BI_log') IS NULL)
 		BEGIN
 			CREATE TABLE dbo.BI_log
 			(
-				executionID INT            NOT NULL,
+				executionID BIGINT         NOT NULL,
 				sequenceID  INT            NOT NULL,
 				logDateTime DATETIME       NOT NULL,
 				object      VARCHAR (256)  NOT NULL,
@@ -61,7 +78,7 @@ BEGIN
 	
 	--Declaring User Table for Log purpose
 		DECLARE @BI_log TABLE (			
-			 executionID INT
+			 executionID BIGINT
 			,sequenceID  INT IDENTITY(1,1)
 			,logDateTime DATETIME
 			,object      VARCHAR (256)
@@ -80,15 +97,15 @@ BEGIN
 		,@b                   INT             = 0
 		,@column              NVARCHAR(128)   = ''
 	--LOGGING VARIABLES
-		,@executionID           INT           = (SELECT ISNULL(MAX(executionID + 1),1) FROM dbo.BI_log)
-		,@execObjectName        VARCHAR(256)  = 'dbo.sp_generateHashKey'
-		,@scriptCode            VARCHAR(25)   = ''
-		,@status                VARCHAR(50)   = ''
-		,@logTreeLevel          TINYINT       = 0
-		,@logSpaceTree          VARCHAR(5)    = '    '
-		,@message               VARCHAR(500)  = ''
-		,@SQL                   VARCHAR(4000) = ''
-		,@variables             VARCHAR(2500) = ''
+		,@executionID         BIGINT          = NEXT VALUE FOR dbo.sq_BI_log_executionID
+		,@execObjectName      VARCHAR(256)    = 'dbo.sp_generateHashKey'
+		,@scriptCode          VARCHAR(25)     = ''
+		,@status              VARCHAR(50)     = ''
+		,@logTreeLevel        TINYINT         = 0
+		,@logSpaceTree        VARCHAR(5)      = '    '
+		,@message             VARCHAR(500)    = ''
+		,@SQL                 VARCHAR(4000)   = ''
+		,@variables           VARCHAR(2500)   = ''
 	--GENERAL VARIABLES
 		,@sourceObject        NVARCHAR(256)   = @sourceSchema + N'.' + @sourceObjectName
 		,@sourceObjectId      INT             = 0
@@ -873,10 +890,10 @@ BEGIN
 										BEGIN
 											SET @sqlScript = @sqlScript + 		N'
 	 LoadDateTime
-	,ProcessExecutionID';
+	,ProcessExecutionID,';
 										END
 											SET @sqlScript = @sqlScript + 		N'
-	,CONVERT(
+	CONVERT(
 		 VARCHAR(40)
 		,HASHBYTES(
 			''SHA2_512'' 
@@ -895,7 +912,7 @@ BEGIN
 				ISNULL(CONVERT(VARCHAR(36),a.[' + b.name + ']),''¿'') + ''±''' --UniqueIdentifier Columns
 																													ELSE 
 '
-				ISNULL(CONVERT(VARCHAR(' + CONVERT(NVARCHAR(10),b.max_length) + '),a.[' + b.name + ']),''¿'') + ''±''' --String Columns
+				RTRIM(LTRIM(ISNULL(CONVERT(VARCHAR(' + CONVERT(NVARCHAR(10),b.max_length) + '),a.[' + b.name + ']),''¿''))) + ''±''' --String Columns
 																												END
 																											ELSE --Data Types Non-Strings (such as Numeric,Decimal,INT,FLOAT,...)
 																												CASE 
@@ -1452,8 +1469,11 @@ WHERE ';
 	----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 
 	--Inserting Log into the physical table
-		INSERT INTO dbo.BI_log
-			SELECT * FROM @BI_log;
+		IF(@loggingType IN (1,3))
+			BEGIN
+				INSERT INTO dbo.BI_log
+					SELECT * FROM @BI_log;
+			END
 	
 	--RAISE ERROR IN CASE OF
 		IF(@continue = 0)
