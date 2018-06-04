@@ -1,4 +1,4 @@
-CREATE PROCEDURE [dbo].[sp_generateHashKey] 
+ALTER PROCEDURE [dbo].[sp_generateHashKey] 
 	(
 		 @sourceSchema          NVARCHAR(128)
 		,@sourceObjectName      NVARCHAR(128)
@@ -426,7 +426,7 @@ BEGIN
 											FROM sys.columns
 											WHERE
 												    object_id = @sourceObjectId
-												AND name NOT IN ('ProcessExecutionID','LoadDateTime','BI_HFR')
+												AND name NOT IN ('ProcessExecutionID','LoadDateTime','BI_HFR','BI_HFR_V1')
 											FOR XML PATH(''), TYPE
 											).value('.', 'VARCHAR(MAX)'), 1, 1, ''
 										)
@@ -901,7 +901,7 @@ BEGIN
 																							STUFF(
 																								( 
 																									SELECT 
-																										DISTINCT 
+																										 
 				N' + ' + 
 																										CASE
 																											WHEN c.[precision] = 0 THEN --Data Types Strings and TimeStamp
@@ -948,6 +948,7 @@ BEGIN
 																									WHERE
 																										    b.name IN (SELECT Item FROM dbo.udf_DelimitedSplit8K(@hashKeyColumns,','))
 																										 AND a.object_id = @sourceObjectId
+																									ORDER BY b.name ASC
 																									FOR XML PATH(''), TYPE
 																								).value('.', 'VARCHAR(MAX)'), 1, 3, ''
 																							) 
