@@ -1,4 +1,4 @@
-ALTER PROCEDURE [dbo].[sp_generateHashKey] 
+CREATE PROCEDURE [dbo].[sp_generateHashKey] 
 	(
 		 @sourceSchema          NVARCHAR(128)
 		,@sourceObjectName      NVARCHAR(128)
@@ -910,6 +910,9 @@ BEGIN
 																													WHEN (UPPER(c.name) = 'UNIQUEIDENTIFIER') THEN
 '
 				ISNULL(CONVERT(VARCHAR(36),a.[' + b.name + ']),''¿'') + ''±''' --UniqueIdentifier Columns
+																													WHEN (UPPER(c.name) IN ('NVARCHAR','NCHAR','NTEXT')) THEN
+'
+				RTRIM(LTRIM(ISNULL(CONVERT(VARCHAR(' + CONVERT(NVARCHAR(10),b.max_length / 2) + '),a.[' + b.name + ']),''¿''))) + ''±''' --Nvarchar, Nchar and Ntext Columns
 																													ELSE 
 '
 				RTRIM(LTRIM(ISNULL(CONVERT(VARCHAR(' + CONVERT(NVARCHAR(10),b.max_length) + '),a.[' + b.name + ']),''¿''))) + ''±''' --String Columns
@@ -965,6 +968,8 @@ BEGIN
 																									CASE
 																										WHEN (UPPER(c.name) = 'TIMESTAMP') THEN
 '	,CONVERT(' + UPPER(c.name) +  ',a.[' + b.name + ']) AS [' + b.name + ']' --TimeStamp Columns	
+																										WHEN (UPPER(c.name) IN ('NVARCHAR','NCHAR','NTEXT')) THEN
+'	,CONVERT(' + UPPER(c.name) +  '(' + CONVERT(NVARCHAR(10),b.max_length / 2) + '),a.[' + b.name + ']) AS [' + b.name + ']' --Nvarchar, Nchar and Ntext Columns 
 																										ELSE 
 '	,CONVERT(' + UPPER(c.name) +  '(' + CONVERT(NVARCHAR(10),b.max_length) + '),a.[' + b.name + ']) AS [' + b.name + ']' --String Columns 
 																									END
