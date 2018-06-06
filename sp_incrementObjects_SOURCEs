@@ -16,7 +16,7 @@ CREATE PROCEDURE [dbo].[sp_incrementObjects_SOURCEs]
 		
 		
 	LAST USED LOGGING IDS:
-		- ERRORS      (COD-2900E)
+		- ERRORS      (COD-3200E)
 		- INFORMATION (COD-2400I)
 */
 AS
@@ -76,7 +76,7 @@ BEGIN
 
 	DECLARE
 	--PROCESS FLOW VARIABLES
-		 @continue              SMALLINT       = 1
+		 @continue              BIT            = 1
 		,@sqlScripts            NVARCHAR(MAX)  = N''
 		,@INT                   INT            = 0
 		,@columns               NVARCHAR(4000) = N''
@@ -91,18 +91,40 @@ BEGIN
 		,@SQL                   VARCHAR(4000)  = ''
 		,@variables             VARCHAR(2500)  = ''
 	--FLAGS VARIABLES
-		,@changesFound          SMALLINT       = 0
-		,@dateColumnSpecified   SMALLINT       = 0
-		,@SRC                   SMALLINT       = 0
-		,@CUR                   SMALLINT       = 0
-		,@HST                   SMALLINT       = 0
+		,@changesFound          BIT            = 0
+		,@dateColumnSpecified   BIT            = 0
+		,@SRC                   BIT            = 0
+		,@CUR                   BIT            = 0
+		,@HST                   BIT            = 0
+		,@reloadProcess         BIT            = 0
 	--GENERAL VARIABLES
 		,@CUR_table             NVARCHAR(128)  = REPLACE(@SRC_table,N'_SRC',N'_CUR')
 		,@HST_table             NVARCHAR(128)  = REPLACE(@SRC_table,N'_SRC',N'_HST')
 		,@FNL_table             NVARCHAR(128)  = REPLACE(@SRC_table,N'_SRC',N'')
 		,@BIHashColumnName      NVARCHAR(128)  = 'BI_HFR'
 		,@BIBeginDateColumnName NVARCHAR(128)  = 'BI_beginDate'
-		,@BIEndDateColumnName   NVARCHAR(128)  = 'BI_endDate';
+		,@BIEndDateColumnName   NVARCHAR(128)  = 'BI_endDate'
+		,@BIBeginDate           DATETIME       = GETDATE()
+		,@BIBeginDate_varchar   VARCHAR(50)    = '';
+	
+	/*------------------------------------------------------------------------------------------------------------------------------
+	 ****************************************************************************************************************************** 
+	   IF IS A RELOAD PROCESS, CHANGE THE DATE IN THE CONFIG TABLE TO THE PROCESS DATE AND SET TO (1) THE VARIABLE @reloadProcess
+	   
+	   USE THE FOLLOWING SELECT TO GET THE PARAMETER IN THE CONFIG TABLE
+	   		- SELECT value1 FROM dbo.BIConfig WHERE type = 'REPROCESS-DATE-SOURCE';
+	   	
+	   	USE THE FOLOWING SCRIPT TO UPDATE THE VALUE OF THIS PARAMETER IN THE CONFIG TABLE
+	   		- UPDATE INTO dbo.BIConfig SET value1 = '' WHERE type = 'REPROCESS-DATE-SOURCE';
+	   
+	   THE FORMAT FOR THE VALUE OF THIS VARIABLES IS EG '31 Dec 9999 11:59:59 PM'
+	 ******************************************************************************************************************************
+	------------------------------------------------------------------------------------------------------------------------------*/
+		SET @reloadProcess = 0;
+	/*------------------------------------------------------------------------------------------------------------------------------
+	 ****************************************************************************************************************************** 
+	 ******************************************************************************************************************************
+	------------------------------------------------------------------------------------------------------------------------------*/
 	
 	SET @variables = ' | @schema = '                + ISNULL(CONVERT(VARCHAR(128),@schema               ),'') +
 					 ' | @SRC_table = '             + ISNULL(CONVERT(VARCHAR(128),@SRC_table            ),'') +
@@ -156,6 +178,189 @@ BEGIN
 				   	RAISERROR(@message,10,1);
 			END 
 	----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+	
+	--If the variables is (1) check the existence of the input value at the config table
+		IF(@reloadProcess = 1)
+			BEGIN
+				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+					IF(@debug = 1)
+						BEGIN
+							SET @logTreeLevel = 2;
+							SET @scriptCode   = '';
+							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Reprocess Process activated';
+							SET @status       = 'Information';
+							SET @SQL          = '';
+							IF(@loggingType IN (1,3))
+								BEGIN
+									INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+									VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+								END
+							IF(@loggingType IN (2,3))
+							   	RAISERROR(@message,10,1);
+						END 
+				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+					IF(@debug = 1)
+						BEGIN
+							SET @logTreeLevel = 2;
+							SET @scriptCode   = '';
+							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'BEGIN Getting BI_endDate parameter from Config Table';
+							SET @status       = 'Information';
+							SET @SQL          = '';
+							IF(@loggingType IN (1,3))
+								BEGIN
+									INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+									VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+								END
+							IF(@loggingType IN (2,3))
+							   	RAISERROR(@message,10,1);
+						END 
+				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+				IF(
+					EXISTS(
+						SELECT 1
+						FROM   dbo.BIConfig
+						WHERE  type = 'REPROCESS-DATE-SOURCE'
+					)
+				)
+					BEGIN 
+						BEGIN TRY
+							SET @BIBeginDate = (
+								SELECT CONVERT(DATETIME,a.value1)
+								FROM dbo.BIConfig a
+								WHERE a.type = 'REPROCESS-DATE-SOURCE'
+							)
+							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+								IF(@debug = 1)
+									BEGIN
+										SET @logTreeLevel = 3;
+										SET @scriptCode   = '';
+										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'BI_endDate assigned to (' + CONVERT(VARCHAR(50),@BIBeginDate,100) + ')';
+										SET @status       = 'Information';
+										SET @SQL          = '';
+										IF(@loggingType IN (1,3))
+											BEGIN
+												INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+												VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+											END
+										IF(@loggingType IN (2,3))
+										   	RAISERROR(@message,10,1);
+									END 
+							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+						END TRY
+						BEGIN CATCH
+							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+								SET @logTreeLevel = 3;
+								SET @scriptCode   = 'COD-100E';
+								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error ocurs while trying to convert the value from config table to Datetime';
+								SET @status       = 'ERROR';
+								SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');;
+								IF(@loggingType IN (1,3))
+									BEGIN
+										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+										VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+									END
+								IF(@loggingType IN (2,3))
+								   	RAISERROR(@message,11,1);
+							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+						END CATCH
+					END
+				ELSE
+					BEGIN
+						SET @continue = 0;
+						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+								SET @logTreeLevel = 3;
+								SET @scriptCode   = 'COD-200E';
+								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Reload Process Activated. However, the config table does not have value';
+								SET @status       = 'ERROR';
+								SET @SQL          = '';
+								IF(@loggingType IN (1,3))
+									BEGIN
+										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+										VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+									END
+								IF(@loggingType IN (2,3))
+								   	RAISERROR(@message,11,1);
+							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+					END
+				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+					IF(@debug = 1)
+						BEGIN
+							SET @logTreeLevel = 2;
+							SET @scriptCode   = '';
+							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'END Getting BI_beginDate parameter from Config Table';
+							SET @status       = 'Information';
+							SET @SQL          = '';
+							IF(@loggingType IN (1,3))
+								BEGIN
+									INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+									VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+								END
+							IF(@loggingType IN (2,3))
+							   	RAISERROR(@message,10,1);
+						END 
+				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+					IF(@debug = 1)
+						BEGIN
+							SET @logTreeLevel = 2;
+							SET @scriptCode   = '';
+							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'BEGIN validation of BI_beginDate';
+							SET @status       = 'Information';
+							SET @SQL          = '';
+							IF(@loggingType IN (1,3))
+								BEGIN
+									INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+									VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+								END
+							IF(@loggingType IN (2,3))
+							   	RAISERROR(@message,10,1);
+						END 
+				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+				
+				IF(DATEPART(hour,@BIBeginDate) = 0)
+					BEGIN
+						SET @continue = 0;
+						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+							SET @logTreeLevel = 3;
+							SET @scriptCode   = 'COD-300E';
+							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The date specified in the config table is not valid (' + CONVERT(VARCHAR(50),@BIBeginDate,100) + '). Please include the time part in ''11:59:50 PM'' format.';
+							SET @status       = 'ERROR';
+							SET @SQL          = '';
+							IF(@loggingType IN (1,3))
+								BEGIN
+									INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+									VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+								END
+							IF(@loggingType IN (2,3))
+							   	RAISERROR(@message,11,1);
+						----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+					END
+				
+				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+					IF(@debug = 1)
+						BEGIN
+							SET @logTreeLevel = 2;
+							SET @scriptCode   = '';
+							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'END validation of BI_endDate';
+							SET @status       = 'Information';
+							SET @SQL          = '';
+							IF(@loggingType IN (1,3))
+								BEGIN
+									INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+									VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+								END
+							IF(@loggingType IN (2,3))
+							   	RAISERROR(@message,10,1);
+						END 
+				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+			END
+	
+	--CONVERTING BI_beginDate into VARCHAR
+		IF(@continue = 1)
+			BEGIN
+				SET @BIBeginDate_varchar = CONVERT(VARCHAR(50),@BIBeginDate,100);
+			END 
 	
 	--IN CASE OF @monthsBack IS NOT SPECIFIED, GET IT FROM THE BI CONFIG TABLE
 		IF(@continue = 1 AND LEN(RTRIM(LTRIM(@monthsBack))) = 0)
@@ -238,7 +443,7 @@ BEGIN
 				SET @continue = 0;
 				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 					SET @logTreeLevel = 3;
-					SET @scriptCode   = 'COD-100E';
+					SET @scriptCode   = 'COD-400E';
 					SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The Parameter @schema can not be empty or NULL';
 					SET @status       = 'ERROR';
 					SET @SQL          = '';
@@ -256,7 +461,7 @@ BEGIN
 				SET @continue = 0;
 				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 					SET @logTreeLevel = 3;
-					SET @scriptCode   = 'COD-200E';
+					SET @scriptCode   = 'COD-500E';
 					SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The Input Parameter @SRC_table can not be empty or NULL';
 					SET @status       = 'ERROR';
 					SET @SQL          = '';
@@ -267,13 +472,14 @@ BEGIN
 						END
 					IF(@loggingType IN (2,3))
 					   	RAISERROR(@message,11,1);
+				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 			END
 		ELSE IF(ISNUMERIC(@monthsBack) = 0)
 			BEGIN
 				SET @continue = 0;
 				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 					SET @logTreeLevel = 3;
-					SET @scriptCode   = 'COD-300E';
+					SET @scriptCode   = 'COD-600E';
 					SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'If The Input Parameter @monthsBack is specified. @monthsBack should be numeric';
 					SET @status       = 'ERROR';
 					SET @SQL          = '';
@@ -291,7 +497,7 @@ BEGIN
 				SET @continue = 0;
 				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 					SET @logTreeLevel = 3;
-					SET @scriptCode   = 'COD-400E';
+					SET @scriptCode   = 'COD-700E';
 					SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The imput parameter @finalTableIsCUR must be (1) or (0)';
 					SET @status       = 'ERROR';
 					SET @SQL          = '';
@@ -322,7 +528,7 @@ BEGIN
 						SET @continue = 0;
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 							SET @logTreeLevel = 3;
-							SET @scriptCode   = 'COD-500E';
+							SET @scriptCode   = 'COD-800E';
 							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The SRC table does not exist or is not a TABLE or VIEW';
 							SET @status       = 'ERROR';
 							SET @SQL          = '';
@@ -357,7 +563,7 @@ BEGIN
 						SET @continue = 0;
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 							SET @logTreeLevel = 3;
-							SET @scriptCode   = 'COD-600E';
+							SET @scriptCode   = 'COD-900E';
 							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The Input Parameter @dateColumn does not exist on the SRT (Source) table or has not a valid DateTime data type';
 							SET @status       = 'ERROR';
 							SET @SQL          = '';
@@ -383,7 +589,7 @@ BEGIN
 				SET @dateColumnSpecified = 0;
 				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 					SET @logTreeLevel = 3;
-					SET @scriptCode   = 'COD-700E';
+					SET @scriptCode   = 'COD-1000E';
 					SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The Input Parameter @monthsBack is required when the parameter @dateColumn is specified';
 					SET @status       = 'ERROR';
 					SET @SQL          = '';
@@ -479,7 +685,7 @@ BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-800E';
+								SET @scriptCode   = 'COD-1100E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The table is empty';
 								SET @status       = 'ERROR';
 								SET @SQL          = '';
@@ -498,7 +704,7 @@ BEGIN
 					SET @continue = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-900E';
+						SET @scriptCode   = 'COD-1200E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The table does not exist';
 						SET @status       = 'ERROR';
 						SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
@@ -617,7 +823,7 @@ BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-1000E';
+								SET @scriptCode   = 'COD-1300E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 								SET @status       = 'ERROR';
 								SET @SQL          = @SQL;
@@ -1045,7 +1251,7 @@ BEGIN
 						END
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 				BEGIN TRY
-					SET @sqlScripts = N'SELECT *, GETDATE() AS ' + @BIBeginDateColumnName + ' INTO ' + @schema + N'.' + @CUR_table + N' FROM ' + @schema + N'.' + @SRC_table + ' (NOLOCK)';
+					SET @sqlScripts = N'SELECT *, ''' + @BIBeginDate_varchar + ''' AS ' + @BIBeginDateColumnName + ' INTO ' + @schema + N'.' + @CUR_table + N' FROM ' + @schema + N'.' + @SRC_table + ' (NOLOCK)';
 					
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
@@ -1113,7 +1319,7 @@ BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 4;
-								SET @scriptCode   = 'COD-1100E';
+								SET @scriptCode   = 'COD-1400E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The table CUR does not have records after its creation';
 								SET @status       = 'ERROR';
 								SET @SQL          = ''
@@ -1166,7 +1372,7 @@ BEGIN
 					SET @continue   = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-1200E';
+						SET @scriptCode   = 'COD-1500E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to create the CUR table';
 						SET @status       = 'ERROR';
 						SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
@@ -1266,7 +1472,7 @@ BEGIN
 					SET @continue = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-1300E';
+						SET @scriptCode   = 'COD-1600E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to create the HST (History) table';
 						SET @status       = 'ERROR';
 						SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
@@ -1368,7 +1574,7 @@ BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-1400E';
+								SET @scriptCode   = 'COD-1700E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 								SET @status       = 'ERROR';
 								SET @SQL          = @SQL;
@@ -1474,7 +1680,7 @@ BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-1500E';
+								SET @scriptCode   = 'COD-1800E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 								SET @status       = 'ERROR';
 								SET @SQL          = @SQL;
@@ -1583,7 +1789,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-1600E';
+											SET @scriptCode   = 'COD-1900E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 											SET @status       = 'ERROR';
 											SET @SQL          = @SQL;
@@ -1689,7 +1895,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-1700E';
+											SET @scriptCode   = 'COD-2000E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 											SET @status       = 'ERROR';
 											SET @SQL          = @SQL;
@@ -1795,7 +2001,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-1800E';
+											SET @scriptCode   = 'COD-2100E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 											SET @status       = 'ERROR';
 											SET @SQL          = @SQL;
@@ -1901,7 +2107,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-1900E';
+											SET @scriptCode   = 'COD-2200E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 											SET @status       = 'ERROR';
 											SET @SQL          = @SQL;
@@ -2007,7 +2213,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-2000E';
+											SET @scriptCode   = 'COD-2300E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 											SET @status       = 'ERROR';
 											SET @SQL          = @SQL;
@@ -2113,7 +2319,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-2100E';
+											SET @scriptCode   = 'COD-2400E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 											SET @status       = 'ERROR';
 											SET @SQL          = @SQL;
@@ -2210,7 +2416,7 @@ BEGIN
 										SET @sqlScripts = @sqlScripts +     N'b.' + @BIHashColumnName + ' IS NULL ';
 								IF(@dateColumnSpecified = 1)
 									BEGIN
-										SET @sqlScripts = @sqlScripts +     N' AND a.' + @dateColumn + ' >= DATEADD(MONTH,' + @monthsBack + ',GETDATE())';
+										SET @sqlScripts = @sqlScripts +     N' AND a.' + @dateColumn + ' >= DATEADD(MONTH,' + @monthsBack + ',CONVERT(DATETIME,''' + @BIBeginDate_varchar + ''')))';
 									END
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -2286,7 +2492,7 @@ BEGIN
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 3;
-									SET @scriptCode   = 'COD-2200E';
+									SET @scriptCode   = 'COD-2500E';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to generate the difference data between CUR table and SRC table';
 									SET @status       = 'ERROR';
 									SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
@@ -2326,7 +2532,7 @@ BEGIN
 								SET @sqlScripts =               N'INSERT INTO ' + @schema + N'.' + @HST_table + N' ';
 								SET @sqlScripts = @sqlScripts +     N'SELECT ';
 								SET @sqlScripts = @sqlScripts +         N'b.* ';
-								SET @sqlScripts = @sqlScripts +         N',GETDATE() AS ' + @BIEndDateColumnName + ' ';
+								SET @sqlScripts = @sqlScripts +         N',''' + @BIBeginDate_varchar + ''' AS ' + @BIEndDateColumnName + ' ';
 								SET @sqlScripts = @sqlScripts +     N'FROM ';
 								SET @sqlScripts = @sqlScripts +         N'##incrementObjects_changeDelete a INNER JOIN ' + @schema + N'.' + @CUR_table + N' (NOLOCK) b ON ';
 								SET @sqlScripts = @sqlScripts +             N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
@@ -2378,7 +2584,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-2300E';
+											SET @scriptCode   = 'COD-2600E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'No Rows Affected';
 											SET @status       = 'ERROR';
 											SET @SQL          = '';
@@ -2400,7 +2606,7 @@ BEGIN
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 3;
-									SET @scriptCode   = 'COD-2400E';
+									SET @scriptCode   = 'COD-2700E';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to insert the changes/deletes rows into the HST table';
 									SET @status       = 'ERROR';
 									SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
@@ -2489,7 +2695,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-2500E';
+											SET @scriptCode   = 'COD-2800E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'No Rows Affected';
 											SET @status       = 'ERROR';
 											SET @SQL          = '';
@@ -2514,7 +2720,7 @@ BEGIN
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 3;
-									SET @scriptCode   = 'COD-2600E';
+									SET @scriptCode   = 'COD-2900E';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to delete the changes/deletes rows in the CUR table';
 									SET @status       = 'ERROR';
 									SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
@@ -2681,7 +2887,7 @@ BEGIN
 									
 									----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 										SET @logTreeLevel = 3;
-										SET @scriptCode   = 'COD-2700E';
+										SET @scriptCode   = 'COD-3000E';
 										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to get new rows';
 										SET @status       = 'ERROR';
 										SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),N'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
@@ -2758,7 +2964,7 @@ BEGIN
 										--INSERT - 2
 											SET @sqlScripts = @sqlScripts +     N'SELECT ';
 											SET @sqlScripts = @sqlScripts +         @columns;
-											SET @sqlScripts = @sqlScripts +         N',GETDATE() AS ' + @BIBeginDateColumnName + ' ';
+											SET @sqlScripts = @sqlScripts +         N',''' + @BIBeginDate_varchar + ''' AS ' + @BIBeginDateColumnName + ' ';
 											SET @sqlScripts = @sqlScripts +     N'FROM ';
 											SET @sqlScripts = @sqlScripts +         N'##incrementObjects_new a INNER JOIN ' + @schema + N'.' + @SRC_table + N' (NOLOCK) b ON ';
 											SET @sqlScripts = @sqlScripts +             N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
@@ -2810,7 +3016,7 @@ BEGIN
 													SET @continue = 0;
 													----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 														SET @logTreeLevel = 3;
-														SET @scriptCode   = 'COD-2800E';
+														SET @scriptCode   = 'COD-3100E';
 														SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'No Rows Affected';
 														SET @status       = 'ERROR';
 														SET @SQL          = '';
@@ -2835,7 +3041,7 @@ BEGIN
 											
 											----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 												SET @logTreeLevel = 3;
-												SET @scriptCode   = 'COD-2900E';
+												SET @scriptCode   = 'COD-3200E';
 												SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to insert the new rows into the CUR table';
 												SET @status       = 'ERROR';
 												SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
