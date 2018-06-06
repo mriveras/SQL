@@ -1843,9 +1843,9 @@ BEGIN
 								SET @sqlScripts = @sqlScripts + N'FROM ';
 								SET @sqlScripts = @sqlScripts +     @dimHashFullObject + N' a LEFT JOIN ' + @tempHashV1FullObject + N' b ON ';
 								SET @sqlScripts = @sqlScripts +         N'b.BI_HFR_V1 = a.BI_HFR_V1 ';
-								SET @sqlScripts = @sqlScripts +         N'AND a.BI_endDate = CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') ';
 								SET @sqlScripts = @sqlScripts + N'WHERE ';
 								SET @sqlScripts = @sqlScripts +     N'b.BI_HFR_V1 IS NULL ';
+								SET @sqlScripts = @sqlScripts +     N'AND a.BI_endDate = CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') ';
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									IF(@debug = 1)
@@ -2216,25 +2216,25 @@ BEGIN
 								SET @sqlScripts =               N'INSERT INTO ' + @dimHashFullObject + N' (' + @columns + N') ';
 								
 								SET @columns = (
-										SELECT
-											STUFF(
-												(
-													SELECT   
-														N',b.[' + a.name + N']'
-													FROM     
-														sys.columns a INNER JOIN sys.columns b ON
-															    a.name = b.name
-															AND a.object_id = OBJECT_ID(@tempHashV1FullObject)
-															AND b.object_id = OBJECT_ID(@dimHashFullObject)
-													WHERE    
-														a.name NOT IN ('BI_beginDate','BI_endDate')
-													ORDER BY 
-														a.name ASC
-													FOR XML  PATH(''), TYPE
-												).value('.', 'VARCHAR(MAX)'), 1, 1, ''
-											)
-											+ ',GETDATE() AS [BI_beginDate],CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') as [BI_endDate]'
-									);
+									SELECT
+										STUFF(
+											(
+												SELECT   
+													N',b.[' + a.name + N']'
+												FROM     
+													sys.columns a INNER JOIN sys.columns b ON
+														    a.name = b.name
+														AND a.object_id = OBJECT_ID(@tempHashV1FullObject)
+														AND b.object_id = OBJECT_ID(@dimHashFullObject)
+												WHERE    
+													a.name NOT IN ('BI_beginDate','BI_endDate')
+												ORDER BY 
+													a.name ASC
+												FOR XML  PATH(''), TYPE
+											).value('.', 'VARCHAR(MAX)'), 1, 1, ''
+										)
+										+ ',GETDATE() AS [BI_beginDate],CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') as [BI_endDate]'
+								);
 									
 								SET @sqlScripts = @sqlScripts +     N'SELECT ' + @columns
 								SET @sqlScripts = @sqlScripts +     N'FROM ';
@@ -2346,7 +2346,25 @@ BEGIN
 									END
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							BEGIN TRY
-								SET @sqlScripts = N'EXEC dbo.sp_generateHashKey ''' + @dimHashSchema + ''',''' + @dimHashTableName + ''',''' + @dimHashSchema + ''',''' + @dimHashTableName + ''','''','''','''',0,3';
+								SET @columns = (
+									SELECT
+										STUFF(
+											(
+												SELECT   
+													N',' + a.name
+												FROM     
+													sys.columns a 
+												WHERE
+													    a.object_id = OBJECT_ID(@dimHashFullObject)
+													AND a.name NOT IN ('BI_endDate','BI_HFR')
+												ORDER BY 
+													a.name ASC
+												FOR XML  PATH(''), TYPE
+											).value('.', 'VARCHAR(MAX)'), 1, 1, ''
+										)
+								);
+								
+								SET @sqlScripts = N'EXEC dbo.sp_generateHashKey ''' + @dimHashSchema + ''',''' + @dimHashTableName + ''',''' + @dimHashSchema + ''',''' + @dimHashTableName + ''',''' + @columns + ''','''','''',1,3';
 											
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									IF(@debug = 1)
