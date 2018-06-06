@@ -72,31 +72,32 @@ BEGIN
 	
 	DECLARE
 	--PROCESS FLOW VARIABLES
-		 @continue             BIT           = 1
-		,@sqlScripts           NVARCHAR(MAX) = N''
-		,@INT                  INT           = 0
+		 @continue             BIT            = 1
+		,@sqlScripts           NVARCHAR(MAX)  = N''
+		,@INT                  INT            = 0
 	--LOGGING VARIABLES
-		,@executionID          BIGINT        = NEXT VALUE FOR dbo.sq_BI_log_executionID
-		,@execObjectName       VARCHAR(256)  = 'dbo.sp_incrementObjects_DIMs'
-		,@scriptCode           VARCHAR(25)   = ''
-		,@status               VARCHAR(50)   = ''
-		,@logTreeLevel         TINYINT       = 0
-		,@logSpaceTree         VARCHAR(5)    = '    '
-		,@message              VARCHAR(500)  = ''
-		,@SQL                  VARCHAR(4000) = ''
-		,@variables            VARCHAR(2500) = ''
+		,@executionID          BIGINT         = NEXT VALUE FOR dbo.sq_BI_log_executionID
+		,@execObjectName       VARCHAR(256)   = 'dbo.sp_incrementObjects_DIMs'
+		,@scriptCode           VARCHAR(25)    = ''
+		,@status               VARCHAR(50)    = ''
+		,@logTreeLevel         TINYINT        = 0
+		,@logSpaceTree         VARCHAR(5)     = '    '
+		,@message              VARCHAR(500)   = ''
+		,@SQL                  VARCHAR(4000)  = ''
+		,@variables            VARCHAR(2500)  = ''
 	--FLAGS VARIABLES
-		,@changesFound         BIT           = 0
-		,@DIM                  BIT           = 0
-		,@VIEW                 BIT           = 0
-		,@firstLoad            BIT           = 0
+		,@changesFound         BIT            = 0
+		,@DIM                  BIT            = 0
+		,@VIEW                 BIT            = 0
+		,@firstLoad            BIT            = 0
 	--GENERAL VARIABLES
-		,@tempHashV1ObjectName NVARCHAR(128) = N''
-		,@sourceFullObject     NVARCHAR(256) = N''
-		,@dimHashFullObject    NVARCHAR(256) = N''
-		,@tempHashV1FullObject NVARCHAR(156) = N''
-		,@sourceObjectId       INT           = 0
-		,@dimHashObjectId      INT           = 0;
+		,@tempHashV1ObjectName NVARCHAR(128)  = N''
+		,@sourceFullObject     NVARCHAR(256)  = N''
+		,@dimHashFullObject    NVARCHAR(256)  = N''
+		,@tempHashV1FullObject NVARCHAR(156)  = N''
+		,@sourceObjectId       INT            = 0
+		,@dimHashObjectId      INT            = 0
+		,@columns              NVARCHAR(4000) = N'';
 		
 	SET @sourceFullObject     = @sourceSchema  + N'.' + @sourceObjectName;
 	SET @sourceObjectId       = OBJECT_ID(@sourceFullObject);
@@ -2188,13 +2189,54 @@ BEGIN
 											RAISERROR(@message,10,1);
 									END
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-							
+
 							BEGIN TRY
-								SET @sqlScripts =               N'INSERT INTO ' + @dimHashFullObject + N' ';
-								SET @sqlScripts = @sqlScripts +     N'SELECT ';
-								SET @sqlScripts = @sqlScripts +         N'b.* ';
-								SET @sqlScripts = @sqlScripts +         N',GETDATE() AS BI_beginDate ';
-								SET @sqlScripts = @sqlScripts +         N',CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') AS BI_endDate ';
+								--GETTING @dimHashFullObject COLUMNS
+									SET @columns = (
+										SELECT
+											STUFF(
+												(
+													SELECT   
+														N',[' + a.name + N']'
+													FROM     
+														sys.columns a INNER JOIN sys.columns b ON
+															    a.name = b.name
+															AND a.object_id = OBJECT_ID(@tempHashV1FullObject)
+															AND b.object_id = OBJECT_ID(@dimHashFullObject)
+													WHERE    
+														a.name NOT IN ('BI_beginDate','BI_endDate')
+													ORDER BY 
+														a.name ASC
+													FOR XML  PATH(''), TYPE
+												).value('.', 'VARCHAR(MAX)'), 1, 1, ''
+											)
+											+ ',[BI_beginDate],[BI_endDate]'
+									);
+									
+								SET @sqlScripts =               N'INSERT INTO ' + @dimHashFullObject + N' (' + @columns + N') ';
+								
+								SET @columns = (
+										SELECT
+											STUFF(
+												(
+													SELECT   
+														N',b.[' + a.name + N']'
+													FROM     
+														sys.columns a INNER JOIN sys.columns b ON
+															    a.name = b.name
+															AND a.object_id = OBJECT_ID(@tempHashV1FullObject)
+															AND b.object_id = OBJECT_ID(@dimHashFullObject)
+													WHERE    
+														a.name NOT IN ('BI_beginDate','BI_endDate')
+													ORDER BY 
+														a.name ASC
+													FOR XML  PATH(''), TYPE
+												).value('.', 'VARCHAR(MAX)'), 1, 1, ''
+											)
+											+ ',GETDATE() AS [BI_beginDate],CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') as [BI_endDate]'
+									);
+									
+								SET @sqlScripts = @sqlScripts +     N'SELECT ' + @columns
 								SET @sqlScripts = @sqlScripts +     N'FROM ';
 								SET @sqlScripts = @sqlScripts +         N'##incrementObjects_DIM_new a INNER JOIN ' + @tempHashV1FullObject + N' b ON ';
 								SET @sqlScripts = @sqlScripts +             N'b.BI_HFR_V1 = a.BI_HFR_V1 ';
@@ -2265,11 +2307,7 @@ BEGIN
 									DROP TABLE ##incrementObjects_DIM_new;		
 							END TRY
 							BEGIN CATCH
-								SET @continue = 0;
-								
-								IF OBJECT_ID ('tempdb..##incrementObjects_DIM_new') IS NOT NULL
-									DROP TABLE ##incrementObjects_DIM_new; 
-									
+								SET @continue = 0;									
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 3;
 									SET @scriptCode   = 'COD-3000E';
