@@ -422,7 +422,7 @@ BEGIN
 									SELECT
 										STUFF(
 											(
-											SELECT ',' + name
+											SELECT ',[' + name + ']'
 											FROM sys.columns
 											WHERE
 												    object_id = @sourceObjectId
@@ -949,7 +949,7 @@ BEGIN
 																											    c.system_type_id = b.system_type_id
 																											AND c.user_type_id   = b.user_type_id
 																									WHERE
-																										    b.name IN (SELECT Item FROM dbo.udf_DelimitedSplit8K(@hashKeyColumns,','))
+																										    '[' + b.name + ']' IN (SELECT Item FROM dbo.udf_DelimitedSplit8K(@hashKeyColumns,','))
 																										 AND a.object_id = @sourceObjectId
 																									ORDER BY b.name ASC
 																									FOR XML PATH(''), TYPE
@@ -1492,3 +1492,4 @@ WHERE ';
 			END 
 END
 GO
+
