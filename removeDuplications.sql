@@ -13,6 +13,9 @@ AS
 	Developed by: Mauricio Rivera
 	Date: 10 May 2018
 	
+	MODIFICATIONS
+		
+		
 	LAST USED LOGGING IDS:
 		- ERRORS      (COD-1100E)
 		- INFORMATION (COD-300I)
@@ -36,11 +39,25 @@ BEGIN
 		IF(@loggingType IS NULL)
 			SET @loggingType = '';
 	
+	--checking sequence
+		IF(
+			NOT EXISTS(
+				SELECT 1
+				FROM sys.sequences 
+				WHERE name = 'sq_BI_log_executionID'
+			)
+		)
+			BEGIN
+				CREATE SEQUENCE dbo.sq_BI_log_executionID
+			    	START     WITH 1  
+			    	INCREMENT BY   1; 
+			END
+			
 	IF(OBJECT_ID('dbo.BI_log') IS NULL)
 		BEGIN
 			CREATE TABLE dbo.BI_log
 			(
-				executionID INT            NOT NULL,
+				executionID BIGINT         NOT NULL,
 				sequenceID  INT            NOT NULL,
 				logDateTime DATETIME       NOT NULL,
 				object      VARCHAR (256)  NOT NULL,
@@ -55,7 +72,7 @@ BEGIN
 	
 	--Declaring User Table for Log purpose
 		DECLARE @BI_log TABLE (			
-			 executionID INT
+			 executionID BIGINT
 			,sequenceID  INT IDENTITY(1,1)
 			,logDateTime DATETIME
 			,object      VARCHAR (256)
@@ -71,7 +88,7 @@ BEGIN
 		 @continue            SMALLINT      = 1
 		,@sqlScript           NVARCHAR(MAX) = N''
 	--LOGGING VARIABLES
-		,@executionID         INT           = (SELECT ISNULL(MAX(executionID + 1),1) FROM dbo.BI_log)
+		,@executionID         BIGINT        = NEXT VALUE FOR dbo.sq_BI_log_executionID
 		,@execObjectName      VARCHAR(256)  = 'dbo.sp_removeDuplications'
 		,@scriptCode          VARCHAR(25)   = ''
 		,@status              VARCHAR(50)   = ''
@@ -438,7 +455,7 @@ BEGIN
 										SET @scriptCode   = 'COD-100I';
 										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL Script';
 										SET @status       = 'Information';
-										SET @SQL          = @sqlScript;
+										SET @SQL          = ISNULL(@sqlScript,'');
 										IF(@loggingType IN (1,3))
 											BEGIN
 												INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -495,9 +512,9 @@ BEGIN
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
 								SET @scriptCode   = 'COD-800E';
-								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Error while trying to create the Rank Column';
+								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 								SET @status       = 'ERROR';
-								SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -557,7 +574,7 @@ BEGIN
 										SET @scriptCode   = 'COD-200I';
 										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL Script';
 										SET @status       = 'Information';
-										SET @SQL          = @sqlScript;
+										SET @SQL          = ISNULL(@sqlScript,'');
 										IF(@loggingType IN (1,3))
 											BEGIN
 												INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -593,9 +610,9 @@ BEGIN
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
 								SET @scriptCode   = 'COD-900E';
-								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Error while trying to Re-Generate the Hash Key';
+								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 								SET @status       = 'ERROR';
-								SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -665,7 +682,7 @@ BEGIN
 													SET @scriptCode   = 'COD-300I';
 													SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL Script';
 													SET @status       = 'Information';
-													SET @SQL          = @sqlScript;
+													SET @SQL          = ISNULL(@sqlScript,'');
 													IF(@loggingType IN (1,3))
 														BEGIN
 															INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -701,9 +718,9 @@ BEGIN
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
 											SET @scriptCode   = 'COD-1000E';
-											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Error while trying to drop the RANK_NO column in (' + @sourceSchema + '.' + @sourceObjectName + ')';
+											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 											SET @status       = 'ERROR';
-											SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -735,7 +752,7 @@ BEGIN
 													SET @scriptCode   = 'COD-300I';
 													SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL Script';
 													SET @status       = 'Information';
-													SET @SQL          = @sqlScript;
+													SET @SQL          = ISNULL(@sqlScript,'');
 													IF(@loggingType IN (1,3))
 														BEGIN
 															INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -771,9 +788,9 @@ BEGIN
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
 											SET @scriptCode   = 'COD-1100E';
-											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Error while trying to drop the RANK_NO column in (' + @destinationSchema + '.' + @destinationObjectName + ')';
+											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 											SET @status       = 'ERROR';
-											SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -866,8 +883,11 @@ BEGIN
 	----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 
 	--Inserting Log into the physical table
-		INSERT INTO dbo.BI_log
-			SELECT * FROM @BI_log;
+		IF(@loggingType IN (1,3))
+			BEGIN
+				INSERT INTO dbo.BI_log
+					SELECT * FROM @BI_log;
+			END
 	
 	--RAISE ERROR IN CASE OF
 		IF(@continue = 0)
