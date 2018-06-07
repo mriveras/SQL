@@ -16,7 +16,7 @@ CREATE PROCEDURE [dbo].[sp_incrementObjects_SOURCEs]
 		
 		
 	LAST USED LOGGING IDS:
-		- ERRORS      (COD-3200E)
+		- ERRORS      (COD-4100E)
 		- INFORMATION (COD-2400I)
 */
 AS
@@ -77,7 +77,7 @@ BEGIN
 	DECLARE
 	--PROCESS FLOW VARIABLES
 		 @continue              BIT            = 1
-		,@sqlScripts            NVARCHAR(MAX)  = N''
+		,@sqlScript            NVARCHAR(MAX)  = N''
 		,@INT                   INT            = 0
 		,@columns               NVARCHAR(4000) = N''
 	--LOGGING VARIABLES
@@ -252,9 +252,9 @@ BEGIN
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
 								SET @scriptCode   = 'COD-100E';
-								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error ocurs while trying to convert the value from config table to Datetime';
+								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 								SET @status       = 'ERROR';
-								SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -660,7 +660,7 @@ BEGIN
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 				BEGIN TRY					
 					SET @SRC        = 0;
-					SET @sqlScripts = N'SELECT DISTINCT @exist = 1 FROM ' + @schema + N'.' + @SRC_table;
+					SET @sqlScript = N'SELECT DISTINCT @exist = 1 FROM ' + @schema + N'.' + @SRC_table;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
 							BEGIN
@@ -668,7 +668,7 @@ BEGIN
 								SET @scriptCode   = 'COD-100I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScripts;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -678,7 +678,7 @@ BEGIN
 									RAISERROR(@message,10,1);
 							END
 					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-					EXEC sp_executesql @sqlScripts, N'@exist SMALLINT OUTPUT', @exist = @SRC OUTPUT;
+					EXEC sp_executesql @sqlScript, N'@exist SMALLINT OUTPUT', @exist = @SRC OUTPUT;
 					
 					IF (@SRC = 0)
 						BEGIN
@@ -705,9 +705,9 @@ BEGIN
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
 						SET @scriptCode   = 'COD-1200E';
-						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The table does not exist';
+						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
-						SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+						SET @SQL          = ISNULL(@sqlScript,'');
 						IF(@loggingType IN (1,3))
 							BEGIN
 								INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -776,7 +776,7 @@ BEGIN
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 				
 				BEGIN TRY
-					SET @sqlScripts = N'EXEC dbo.sp_validateDuplicatedRows ''' + @schema + ''',''' + @SRC_table + ''',''' + @BIHashColumnName + ''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
+					SET @sqlScript = N'EXEC dbo.sp_validateDuplicatedRows ''' + @schema + ''',''' + @SRC_table + ''',''' + @BIHashColumnName + ''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
 								
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
@@ -785,7 +785,7 @@ BEGIN
 								SET @scriptCode   = 'COD-200I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScripts;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -796,7 +796,7 @@ BEGIN
 							END
 					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					
-					EXEC sp_executesql @sqlScripts, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
+					EXEC sp_executesql @sqlScript, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
 					
 					IF(@continue = 1)
 						BEGIN
@@ -839,6 +839,20 @@ BEGIN
 				END TRY
 				BEGIN CATCH
 					SET @continue = 0;
+					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+						SET @logTreeLevel = 3;
+						SET @scriptCode   = 'COD-1400E';
+						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+						SET @status       = 'ERROR';
+						SET @SQL          = ISNULL(@sqlScript,'');
+						IF(@loggingType IN (1,3))
+							BEGIN
+								INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+								VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+							END
+						IF(@loggingType IN (2,3))
+							RAISERROR(@message,11,1);
+					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 				END CATCH
 				
 				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -882,7 +896,7 @@ BEGIN
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 				BEGIN TRY
 					SET @CUR        = 0;
-					SET @sqlScripts = N'SELECT DISTINCT @exist = 1 FROM ' + @schema + N'.' + @CUR_table;
+					SET @sqlScript = N'SELECT DISTINCT @exist = 1 FROM ' + @schema + N'.' + @CUR_table;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
 							BEGIN
@@ -890,7 +904,7 @@ BEGIN
 								SET @scriptCode   = 'COD-300I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScripts;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -900,7 +914,7 @@ BEGIN
 									RAISERROR(@message,10,1);
 							END
 					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-					EXEC sp_executesql @sqlScripts, N'@exist SMALLINT OUTPUT', @exist = @CUR OUTPUT;
+					EXEC sp_executesql @sqlScript, N'@exist SMALLINT OUTPUT', @exist = @CUR OUTPUT;
 					
 					IF (@CUR = 0) --If no error happens, the table exist. However, if @CUR is 0, the table is empty. That's why we change it to 1
 						BEGIN
@@ -925,23 +939,6 @@ BEGIN
 						END 
 				END TRY
 				BEGIN CATCH
-					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-						IF(@debug = 1)
-							BEGIN
-								SET @logTreeLevel = 3;
-								SET @scriptCode   = '';
-								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The table does not exist';
-								SET @status       = 'Information';
-								SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
-								IF(@loggingType IN (1,3))
-									BEGIN
-										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
-										VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
-									END
-								IF(@loggingType IN (2,3))
-									RAISERROR(@message,10,1);
-							END
-					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
 							BEGIN
@@ -1002,7 +999,7 @@ BEGIN
 									END
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							
-							SET @sqlScripts = N'sp_rename ''' + @schema + N'.' + @FNL_table + N''', ''' + @CUR_table + N'''';
+							SET @sqlScript = N'sp_rename ''' + @schema + N'.' + @FNL_table + N''', ''' + @CUR_table + N'''';
 						
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								IF(@debug = 1)
@@ -1011,7 +1008,7 @@ BEGIN
 										SET @scriptCode   = 'COD-400I';
 										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 										SET @status       = 'Information';
-										SET @SQL          = @sqlScripts;
+										SET @SQL          = ISNULL(@sqlScript,'');
 										IF(@loggingType IN (1,3))
 											BEGIN
 												INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1022,7 +1019,7 @@ BEGIN
 									END
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							
-							EXEC(@sqlScripts)
+							EXEC(@sqlScript)
 							
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								IF(@debug = 1)
@@ -1127,7 +1124,7 @@ BEGIN
 					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					
 					SET @HST        = 0;
-					SET @sqlScripts = N'SELECT DISTINCT @exist = 1 FROM ' + @schema + N'.' + @HST_table;
+					SET @sqlScript = N'SELECT DISTINCT @exist = 1 FROM ' + @schema + N'.' + @HST_table;
 					
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
@@ -1136,7 +1133,7 @@ BEGIN
 								SET @scriptCode   = 'COD-500I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScripts;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1147,7 +1144,7 @@ BEGIN
 							END
 					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					
-					EXEC sp_executesql @sqlScripts, N'@exist SMALLINT OUTPUT', @exist = @HST OUTPUT;
+					EXEC sp_executesql @sqlScript, N'@exist SMALLINT OUTPUT', @exist = @HST OUTPUT;
 					
 					IF (@HST = 0) --If no error happens, the table exist. However, if @HST is 0, the table is empty. That's why we change it to 1
 						BEGIN
@@ -1174,7 +1171,6 @@ BEGIN
 				END TRY
 				BEGIN CATCH
 					SET @HST = 0;
-					
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
 							BEGIN
@@ -1182,7 +1178,7 @@ BEGIN
 								SET @scriptCode   = '';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The table does not exist';
 								SET @status       = 'Information';
-								SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+								SET @SQL          = '';
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1251,7 +1247,7 @@ BEGIN
 						END
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 				BEGIN TRY
-					SET @sqlScripts = N'SELECT *, ''' + @BIBeginDate_varchar + ''' AS ' + @BIBeginDateColumnName + ' INTO ' + @schema + N'.' + @CUR_table + N' FROM ' + @schema + N'.' + @SRC_table + ' (NOLOCK)';
+					SET @sqlScript = N'SELECT *, ''' + @BIBeginDate_varchar + ''' AS ' + @BIBeginDateColumnName + ' INTO ' + @schema + N'.' + @CUR_table + N' FROM ' + @schema + N'.' + @SRC_table + ' (NOLOCK)';
 					
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
@@ -1260,7 +1256,7 @@ BEGIN
 								SET @scriptCode   = 'COD-600I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScripts;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1271,7 +1267,7 @@ BEGIN
 							END
 					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					
-					EXEC(@sqlScripts);
+					EXEC(@sqlScript);
 					SET @CUR = 1;
 					
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -1292,7 +1288,7 @@ BEGIN
 							END
 					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					
-					SET @sqlScripts = N'SELECT DISTINCT @count = COUNT(*) FROM ' + @schema + N'.' + @SRC_table;				
+					SET @sqlScript = N'SELECT DISTINCT @count = COUNT(*) FROM ' + @schema + N'.' + @SRC_table;				
 						
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
@@ -1301,7 +1297,7 @@ BEGIN
 								SET @scriptCode   = 'COD-700I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScripts;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1312,14 +1308,14 @@ BEGIN
 							END
 					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					
-					EXEC sp_executesql @sqlScripts, N'@count INT OUTPUT', @count = @INT OUTPUT;
+					EXEC sp_executesql @sqlScript, N'@count INT OUTPUT', @count = @INT OUTPUT;
 					
 					IF(@INT IS NULL OR @INT = 0)
 						BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 4;
-								SET @scriptCode   = 'COD-1400E';
+								SET @scriptCode   = 'COD-1500E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The table CUR does not have records after its creation';
 								SET @status       = 'ERROR';
 								SET @SQL          = ''
@@ -1372,10 +1368,10 @@ BEGIN
 					SET @continue   = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-1500E';
-						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to create the CUR table';
+						SET @scriptCode   = 'COD-1600E';
+						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
-						SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+						SET @SQL          = ISNULL(@sqlScript,'');
 						IF(@loggingType IN (1,3))
 							BEGIN
 								INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1427,7 +1423,7 @@ BEGIN
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					
 				BEGIN TRY
-					SET @sqlScripts = N'SELECT *, GETDATE() AS ' + @BIBeginDateColumnName + ', GETDATE() AS ' + @BIEndDateColumnName + ' INTO ' + @schema + N'.' + @HST_table + N' FROM ' + @schema + N'.' + @SRC_table + N' (NOLOCK) WHERE 1 = 0';
+					SET @sqlScript = N'SELECT *, GETDATE() AS ' + @BIBeginDateColumnName + ', GETDATE() AS ' + @BIEndDateColumnName + ' INTO ' + @schema + N'.' + @HST_table + N' FROM ' + @schema + N'.' + @SRC_table + N' (NOLOCK) WHERE 1 = 0';
 					
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
@@ -1436,7 +1432,7 @@ BEGIN
 								SET @scriptCode   = 'COD-800I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScripts;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1447,7 +1443,7 @@ BEGIN
 							END
 					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					
-					EXEC(@sqlScripts);
+					EXEC(@sqlScript);
 					SET @HST = 1;  
 					
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -1472,10 +1468,10 @@ BEGIN
 					SET @continue = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-1600E';
-						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to create the HST (History) table';
+						SET @scriptCode   = 'COD-1700E';
+						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
-						SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+						SET @SQL          = ISNULL(@sqlScript,'');
 						IF(@loggingType IN (1,3))
 							BEGIN
 								INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1527,7 +1523,7 @@ BEGIN
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					
 				BEGIN TRY
-					SET @sqlScripts = N'EXEC dbo.sp_homogeniseObjectStructure @objectFrom = ''' + @schema + N'.' + @SRC_table + ''', @objectTo = ''' + @schema + N'.' + @CUR_table + ''', @addNewColumns = 1, @dropNonUsedColumns = 0, @alterDataType = 1, @dontLoseDataWhenDataTypeChange = 1, @status = @statusInt OUTPUT, @message = @messageInt OUTPUT, @SQL = @SQLInt OUTPUT';
+					SET @sqlScript = N'EXEC dbo.sp_homogeniseObjectStructure @objectFrom = ''' + @schema + N'.' + @SRC_table + ''', @objectTo = ''' + @schema + N'.' + @CUR_table + ''', @addNewColumns = 1, @dropNonUsedColumns = 0, @alterDataType = 1, @dontLoseDataWhenDataTypeChange = 1, @status = @statusInt OUTPUT, @message = @messageInt OUTPUT, @SQL = @SQLInt OUTPUT';
 
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
@@ -1536,7 +1532,7 @@ BEGIN
 								SET @scriptCode   = 'COD-900I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScripts;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1547,7 +1543,7 @@ BEGIN
 							END
 					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					
-					EXEC sp_executesql @sqlScripts, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(4000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
+					EXEC sp_executesql @sqlScript, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(4000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
 										
 					IF(@continue = 1)
 						BEGIN
@@ -1574,7 +1570,7 @@ BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-1700E';
+								SET @scriptCode   = 'COD-1800E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 								SET @status       = 'ERROR';
 								SET @SQL          = @SQL;
@@ -1590,6 +1586,20 @@ BEGIN
 				END TRY
 				BEGIN CATCH
 					SET @continue = 0;
+					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+						SET @logTreeLevel = 3;
+						SET @scriptCode   = 'COD-1900E';
+						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+						SET @status       = 'ERROR';
+						SET @SQL          = ISNULL(@sqlScript,'');
+						IF(@loggingType IN (1,3))
+							BEGIN
+								INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+								VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+							END
+						IF(@loggingType IN (2,3))
+							RAISERROR(@message,11,1);
+					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 				END CATCH
 								
 				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -1633,7 +1643,7 @@ BEGIN
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 				
 				BEGIN TRY
-					SET @sqlScripts = N'EXEC dbo.sp_homogeniseObjectStructure @objectFrom = ''' + @schema + N'.' + @SRC_table + ''', @objectTo = ''' + @schema + N'.' + @HST_table + ''', @addNewColumns = 1, @dropNonUsedColumns = 0, @alterDataType = 1, @dontLoseDataWhenDataTypeChange = 1, @status = @statusInt OUTPUT, @message = @messageInt OUTPUT, @SQL = @SQLInt OUTPUT';
+					SET @sqlScript = N'EXEC dbo.sp_homogeniseObjectStructure @objectFrom = ''' + @schema + N'.' + @SRC_table + ''', @objectTo = ''' + @schema + N'.' + @HST_table + ''', @addNewColumns = 1, @dropNonUsedColumns = 0, @alterDataType = 1, @dontLoseDataWhenDataTypeChange = 1, @status = @statusInt OUTPUT, @message = @messageInt OUTPUT, @SQL = @SQLInt OUTPUT';
 
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
@@ -1642,7 +1652,7 @@ BEGIN
 								SET @scriptCode   = 'COD-1000I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScripts;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1653,7 +1663,7 @@ BEGIN
 							END
 					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					
-					EXEC sp_executesql @sqlScripts, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(4000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
+					EXEC sp_executesql @sqlScript, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(4000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
 					
 					IF(@continue = 1)
 						BEGIN
@@ -1680,7 +1690,7 @@ BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-1800E';
+								SET @scriptCode   = 'COD-2000E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 								SET @status       = 'ERROR';
 								SET @SQL          = @SQL;
@@ -1696,6 +1706,20 @@ BEGIN
 				END TRY
 				BEGIN CATCH
 					SET @continue = 0;
+					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+						SET @logTreeLevel = 3;
+						SET @scriptCode   = 'COD-2100E';
+						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+						SET @status       = 'ERROR';
+						SET @SQL          = ISNULL(@sqlScript,'');
+						IF(@loggingType IN (1,3))
+							BEGIN
+								INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+								VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+							END
+						IF(@loggingType IN (2,3))
+							RAISERROR(@message,11,1);
+					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 				END CATCH
 				
 				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -1742,7 +1766,7 @@ BEGIN
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							
 							BEGIN TRY
-								SET @sqlScripts = N'EXEC dbo.sp_manageIndexes 1, 2, ''DL_NC_' + @schema + @HST_table + N'_' + @BIHashColumnName + ''',''' + @schema + ''',''' + @HST_table + ''',''' + @BIHashColumnName + ''','''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
+								SET @sqlScript = N'EXEC dbo.sp_manageIndexes 1, 2, ''DL_NC_' + @schema + @HST_table + N'_' + @BIHashColumnName + ''',''' + @schema + ''',''' + @HST_table + ''',''' + @BIHashColumnName + ''','''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									IF(@debug = 1)
@@ -1751,7 +1775,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1100I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScripts;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1762,7 +1786,7 @@ BEGIN
 										END
 								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 								
-								EXEC sp_executesql @sqlScripts, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
+								EXEC sp_executesql @sqlScript, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
 								
 								IF(@continue = 1)
 									BEGIN
@@ -1789,7 +1813,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-1900E';
+											SET @scriptCode   = 'COD-2200E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 											SET @status       = 'ERROR';
 											SET @SQL          = @SQL;
@@ -1805,6 +1829,20 @@ BEGIN
 							END TRY
 							BEGIN CATCH
 								SET @continue = 0;
+								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+									SET @logTreeLevel = 3;
+									SET @scriptCode   = 'COD-2300E';
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+									SET @status       = 'ERROR';
+									SET @SQL          = ISNULL(@sqlScript,'');
+									IF(@loggingType IN (1,3))
+										BEGIN
+											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+											VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+										END
+									IF(@loggingType IN (2,3))
+										RAISERROR(@message,11,1);
+								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							END CATCH
 							
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------g
@@ -1848,7 +1886,7 @@ BEGIN
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							
 							BEGIN TRY
-								SET @sqlScripts = N'EXEC dbo.sp_manageIndexes 1, 2, ''DL_NC_' + @schema + @CUR_table + N'_' + @BIHashColumnName + ''',''' + @schema + ''',''' + @CUR_table + ''',''' + @BIHashColumnName + ''','''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
+								SET @sqlScript = N'EXEC dbo.sp_manageIndexes 1, 2, ''DL_NC_' + @schema + @CUR_table + N'_' + @BIHashColumnName + ''',''' + @schema + ''',''' + @CUR_table + ''',''' + @BIHashColumnName + ''','''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									IF(@debug = 1)
@@ -1857,7 +1895,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1200I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScripts;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1868,7 +1906,7 @@ BEGIN
 										END
 								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 								
-								EXEC sp_executesql @sqlScripts, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
+								EXEC sp_executesql @sqlScript, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
 								
 								IF(@continue = 1)
 									BEGIN
@@ -1895,7 +1933,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-2000E';
+											SET @scriptCode   = 'COD-2400E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 											SET @status       = 'ERROR';
 											SET @SQL          = @SQL;
@@ -1911,6 +1949,20 @@ BEGIN
 							END TRY
 							BEGIN CATCH
 								SET @continue = 0;
+								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+									SET @logTreeLevel = 3;
+									SET @scriptCode   = 'COD-2500E';
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+									SET @status       = 'ERROR';
+									SET @SQL          = ISNULL(@sqlScript,'');
+									IF(@loggingType IN (1,3))
+										BEGIN
+											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+											VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+										END
+									IF(@loggingType IN (2,3))
+										RAISERROR(@message,11,1);
+								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							END CATCH
 							
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -1954,7 +2006,7 @@ BEGIN
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 						
 							BEGIN TRY
-								SET @sqlScripts = N'EXEC dbo.sp_manageIndexes 1, 2, ''DL_NC_' + @schema + @SRC_table + N'_' + @BIHashColumnName + ''',''' + @schema + ''',''' + @SRC_table + ''',''' + @BIHashColumnName + ''','''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
+								SET @sqlScript = N'EXEC dbo.sp_manageIndexes 1, 2, ''DL_NC_' + @schema + @SRC_table + N'_' + @BIHashColumnName + ''',''' + @schema + ''',''' + @SRC_table + ''',''' + @BIHashColumnName + ''','''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									IF(@debug = 1)
@@ -1963,7 +2015,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1300I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScripts;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1974,7 +2026,7 @@ BEGIN
 										END
 								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 								
-								EXEC sp_executesql @sqlScripts, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
+								EXEC sp_executesql @sqlScript, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
 								
 								IF(@continue = 1)
 									BEGIN
@@ -2001,7 +2053,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-2100E';
+											SET @scriptCode   = 'COD-2600E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 											SET @status       = 'ERROR';
 											SET @SQL          = @SQL;
@@ -2017,6 +2069,20 @@ BEGIN
 							END TRY
 							BEGIN CATCH
 								SET @continue = 0;
+								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+									SET @logTreeLevel = 3;
+									SET @scriptCode   = 'COD-2700E';
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+									SET @status       = 'ERROR';
+									SET @SQL          = ISNULL(@sqlScript,'');
+									IF(@loggingType IN (1,3))
+										BEGIN
+											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+											VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+										END
+									IF(@loggingType IN (2,3))
+										RAISERROR(@message,11,1);
+								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							END CATCH
 							
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -2060,7 +2126,7 @@ BEGIN
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							
 							BEGIN TRY
-								SET @sqlScripts = N'EXEC dbo.sp_manageIndexes 1, 2, ''DL_NC_' + @schema + @SRC_table + N'_' + @dateColumn + ''',''' + @schema + ''',''' + @SRC_table + ''',''' + @dateColumn + ''','''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
+								SET @sqlScript = N'EXEC dbo.sp_manageIndexes 1, 2, ''DL_NC_' + @schema + @SRC_table + N'_' + @dateColumn + ''',''' + @schema + ''',''' + @SRC_table + ''',''' + @dateColumn + ''','''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									IF(@debug = 1)
@@ -2069,7 +2135,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1400I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScripts;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2080,7 +2146,7 @@ BEGIN
 										END
 								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 								
-								EXEC sp_executesql @sqlScripts, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
+								EXEC sp_executesql @sqlScript, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
 								
 								IF(@continue = 1)
 									BEGIN
@@ -2107,7 +2173,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-2200E';
+											SET @scriptCode   = 'COD-2800E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 											SET @status       = 'ERROR';
 											SET @SQL          = @SQL;
@@ -2123,6 +2189,20 @@ BEGIN
 							END TRY
 							BEGIN CATCH
 								SET @continue = 0;
+								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+									SET @logTreeLevel = 3;
+									SET @scriptCode   = 'COD-2900E';
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+									SET @status       = 'ERROR';
+									SET @SQL          = ISNULL(@sqlScript,'');
+									IF(@loggingType IN (1,3))
+										BEGIN
+											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+											VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+										END
+									IF(@loggingType IN (2,3))
+										RAISERROR(@message,11,1);
+								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							END CATCH
 								
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -2166,7 +2246,7 @@ BEGIN
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							
 							BEGIN TRY
-								SET @sqlScripts = N'EXEC dbo.sp_manageIndexes 1, 2, ''DL_NC_' + @schema + @HST_table + N'_' + @dateColumn + ''',''' + @schema + ''',''' + @HST_table + ''',''' + @dateColumn + ''','''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
+								SET @sqlScript = N'EXEC dbo.sp_manageIndexes 1, 2, ''DL_NC_' + @schema + @HST_table + N'_' + @dateColumn + ''',''' + @schema + ''',''' + @HST_table + ''',''' + @dateColumn + ''','''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									IF(@debug = 1)
@@ -2175,7 +2255,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1500I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScripts;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2186,7 +2266,7 @@ BEGIN
 										END
 								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 								
-								EXEC sp_executesql @sqlScripts, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
+								EXEC sp_executesql @sqlScript, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
 								
 								IF(@continue = 1)
 									BEGIN
@@ -2213,7 +2293,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-2300E';
+											SET @scriptCode   = 'COD-3000E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 											SET @status       = 'ERROR';
 											SET @SQL          = @SQL;
@@ -2229,6 +2309,20 @@ BEGIN
 							END TRY
 							BEGIN CATCH
 								SET @continue = 0;
+								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+									SET @logTreeLevel = 3;
+									SET @scriptCode   = 'COD-3100E';
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+									SET @status       = 'ERROR';
+									SET @SQL          = ISNULL(@sqlScript,'');
+									IF(@loggingType IN (1,3))
+										BEGIN
+											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+											VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+										END
+									IF(@loggingType IN (2,3))
+										RAISERROR(@message,11,1);
+								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							END CATCH
 							
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -2272,7 +2366,7 @@ BEGIN
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							
 							BEGIN TRY				
-								SET @sqlScripts = N'EXEC dbo.sp_manageIndexes 1, 2, ''DL_NC_' + @schema + @CUR_table + N'_' + @dateColumn + ''',''' + @schema + ''',''' + @CUR_table + ''',''' + @dateColumn + ''','''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
+								SET @sqlScript = N'EXEC dbo.sp_manageIndexes 1, 2, ''DL_NC_' + @schema + @CUR_table + N'_' + @dateColumn + ''',''' + @schema + ''',''' + @CUR_table + ''',''' + @dateColumn + ''','''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT';
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									IF(@debug = 1)
@@ -2281,7 +2375,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1600I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScripts;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2292,7 +2386,7 @@ BEGIN
 										END
 								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 								
-								EXEC sp_executesql @sqlScripts, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
+								EXEC sp_executesql @sqlScript, N'@statusInt TINYINT OUTPUT,@messageInt NVARCHAR(500) OUTPUT,@SQLInt VARCHAR(1000) OUTPUT', @statusInt = @continue OUTPUT, @messageInt = @message OUTPUT, @SQLInt = @SQL OUTPUT;
 								
 								IF(@continue = 1)
 									BEGIN
@@ -2319,7 +2413,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-2400E';
+											SET @scriptCode   = 'COD-3200E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 											SET @status       = 'ERROR';
 											SET @SQL          = @SQL;
@@ -2335,6 +2429,20 @@ BEGIN
 							END TRY
 							BEGIN CATCH
 								SET @continue = 0;
+								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+									SET @logTreeLevel = 3;
+									SET @scriptCode   = 'COD-3300E';
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+									SET @status       = 'ERROR';
+									SET @SQL          = ISNULL(@sqlScript,'');
+									IF(@loggingType IN (1,3))
+										BEGIN
+											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+											VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+										END
+									IF(@loggingType IN (2,3))
+										RAISERROR(@message,11,1);
+								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							END CATCH
 							
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -2405,18 +2513,18 @@ BEGIN
 								IF OBJECT_ID ('tempdb..##incrementObjects_changeDelete') IS NOT NULL
 									DROP TABLE ##incrementObjects_changeDelete;	
 								
-										SET @sqlScripts =               N'SELECT ';
-										SET @sqlScripts = @sqlScripts +     N'a.' + @BIHashColumnName + ' ';
-										SET @sqlScripts = @sqlScripts + N'INTO ';
-										SET @sqlScripts = @sqlScripts +     N'##incrementObjects_changeDelete ';
-										SET @sqlScripts = @sqlScripts + N'FROM ';
-										SET @sqlScripts = @sqlScripts +     @schema + N'.' + @CUR_table + N' a LEFT JOIN ' + @schema + N'.' + @SRC_table + N' b ON ';
-										SET @sqlScripts = @sqlScripts +         N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
-										SET @sqlScripts = @sqlScripts + N'WHERE ';
-										SET @sqlScripts = @sqlScripts +     N'b.' + @BIHashColumnName + ' IS NULL ';
+										SET @sqlScript =               N'SELECT ';
+										SET @sqlScript = @sqlScript +     N'a.' + @BIHashColumnName + ' ';
+										SET @sqlScript = @sqlScript + N'INTO ';
+										SET @sqlScript = @sqlScript +     N'##incrementObjects_changeDelete ';
+										SET @sqlScript = @sqlScript + N'FROM ';
+										SET @sqlScript = @sqlScript +     @schema + N'.' + @CUR_table + N' a LEFT JOIN ' + @schema + N'.' + @SRC_table + N' b ON ';
+										SET @sqlScript = @sqlScript +         N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
+										SET @sqlScript = @sqlScript + N'WHERE ';
+										SET @sqlScript = @sqlScript +     N'b.' + @BIHashColumnName + ' IS NULL ';
 								IF(@dateColumnSpecified = 1)
 									BEGIN
-										SET @sqlScripts = @sqlScripts +     N' AND a.' + @dateColumn + ' >= DATEADD(MONTH,' + @monthsBack + ',CONVERT(DATETIME,''' + @BIBeginDate_varchar + ''')))';
+										SET @sqlScript = @sqlScript +     N' AND a.' + @dateColumn + ' >= DATEADD(MONTH,' + @monthsBack + ',CONVERT(DATETIME,''' + @BIBeginDate_varchar + '''))';
 									END
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -2426,7 +2534,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1700I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScripts;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2437,7 +2545,7 @@ BEGIN
 										END
 								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 									
-								EXEC(@sqlScripts);
+								EXEC(@sqlScript);
 								
 								SET @INT = @@ROWCOUNT;
 								
@@ -2486,16 +2594,12 @@ BEGIN
 							END TRY
 							BEGIN CATCH
 								SET @continue = 0;
-								
-								IF OBJECT_ID ('tempdb..##incrementObjects_changeDelete') IS NOT NULL
-									DROP TABLE ##incrementObjects_changeDelete;
-								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 3;
-									SET @scriptCode   = 'COD-2500E';
-									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to generate the difference data between CUR table and SRC table';
+									SET @scriptCode   = 'COD-3400E';
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 									SET @status       = 'ERROR';
-									SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+									SET @SQL          = ISNULL(@sqlScript,'');
 									IF(@loggingType IN (1,3))
 										BEGIN
 											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2529,13 +2633,13 @@ BEGIN
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 								
 							BEGIN TRY
-								SET @sqlScripts =               N'INSERT INTO ' + @schema + N'.' + @HST_table + N' ';
-								SET @sqlScripts = @sqlScripts +     N'SELECT ';
-								SET @sqlScripts = @sqlScripts +         N'b.* ';
-								SET @sqlScripts = @sqlScripts +         N',''' + @BIBeginDate_varchar + ''' AS ' + @BIEndDateColumnName + ' ';
-								SET @sqlScripts = @sqlScripts +     N'FROM ';
-								SET @sqlScripts = @sqlScripts +         N'##incrementObjects_changeDelete a INNER JOIN ' + @schema + N'.' + @CUR_table + N' (NOLOCK) b ON ';
-								SET @sqlScripts = @sqlScripts +             N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
+								SET @sqlScript =               N'INSERT INTO ' + @schema + N'.' + @HST_table + N' ';
+								SET @sqlScript = @sqlScript +     N'SELECT ';
+								SET @sqlScript = @sqlScript +         N'b.* ';
+								SET @sqlScript = @sqlScript +         N',''' + @BIBeginDate_varchar + ''' AS ' + @BIEndDateColumnName + ' ';
+								SET @sqlScript = @sqlScript +     N'FROM ';
+								SET @sqlScript = @sqlScript +         N'##incrementObjects_changeDelete a INNER JOIN ' + @schema + N'.' + @CUR_table + N' (NOLOCK) b ON ';
+								SET @sqlScript = @sqlScript +             N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									IF(@debug = 1)
@@ -2544,7 +2648,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1800I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScripts;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2555,7 +2659,7 @@ BEGIN
 										END 
 								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 	
-								EXEC(@sqlScripts);
+								EXEC(@sqlScript);
 								
 								SET @INT = @@ROWCOUNT;
 								
@@ -2584,7 +2688,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-2600E';
+											SET @scriptCode   = 'COD-3500E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'No Rows Affected';
 											SET @status       = 'ERROR';
 											SET @SQL          = '';
@@ -2600,16 +2704,12 @@ BEGIN
 							END TRY
 							BEGIN CATCH
 								SET @continue = 0;
-								
-								IF OBJECT_ID ('tempdb..##incrementObjects_changeDelete') IS NOT NULL
-									DROP TABLE ##incrementObjects_changeDelete;
-								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 3;
-									SET @scriptCode   = 'COD-2700E';
-									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to insert the changes/deletes rows into the HST table';
+									SET @scriptCode   = 'COD-3600E';
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 									SET @status       = 'ERROR';
-									SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+									SET @SQL          = ISNULL(@sqlScript,'');
 									IF(@loggingType IN (1,3))
 										BEGIN
 											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2643,10 +2743,10 @@ BEGIN
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 									
 							BEGIN TRY
-								SET @sqlScripts =               N'DELETE a ';
-								SET @sqlScripts = @sqlScripts + N'FROM ';
-								SET @sqlScripts = @sqlScripts +     @schema + N'.' + @CUR_table + N' a INNER JOIN ##incrementObjects_changeDelete b ON ';
-								SET @sqlScripts = @sqlScripts +     N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
+								SET @sqlScript =               N'DELETE a ';
+								SET @sqlScript = @sqlScript + N'FROM ';
+								SET @sqlScript = @sqlScript +     @schema + N'.' + @CUR_table + N' a INNER JOIN ##incrementObjects_changeDelete b ON ';
+								SET @sqlScript = @sqlScript +     N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
 								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									IF(@debug = 1)
@@ -2655,7 +2755,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1900I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScripts;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2666,7 +2766,7 @@ BEGIN
 										END
 								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 								
-								EXEC(@sqlScripts)
+								EXEC(@sqlScript)
 								
 								SET @INT = @@ROWCOUNT;
 								
@@ -2695,7 +2795,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-2800E';
+											SET @scriptCode   = 'COD-3700E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'No Rows Affected';
 											SET @status       = 'ERROR';
 											SET @SQL          = '';
@@ -2713,17 +2813,13 @@ BEGIN
 									DROP TABLE ##incrementObjects_changeDelete;
 							END TRY
 							BEGIN CATCH
-								SET @continue = 0;
-								
-								IF OBJECT_ID ('tempdb..##incrementObjects_changeDelete') IS NOT NULL
-									DROP TABLE ##incrementObjects_changeDelete;
-								
+								SET @continue = 0;								
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 3;
-									SET @scriptCode   = 'COD-2900E';
-									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to delete the changes/deletes rows in the CUR table';
+									SET @scriptCode   = 'COD-3800E';
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 									SET @status       = 'ERROR';
-									SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+									SET @SQL          = ISNULL(@sqlScript,'');
 									IF(@loggingType IN (1,3))
 										BEGIN
 											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2803,15 +2899,15 @@ BEGIN
 									IF OBJECT_ID ('tempdb..##incrementObjects_new') IS NOT NULL
 										DROP TABLE ##incrementObjects_new;	
 									
-									SET @sqlScripts =               N'SELECT '
-									SET @sqlScripts = @sqlScripts +     N'a.' + @BIHashColumnName + ' ';
-									SET @sqlScripts = @sqlScripts + N'INTO ';
-									SET @sqlScripts = @sqlScripts +     N'##incrementObjects_new ';
-									SET @sqlScripts = @sqlScripts + N'FROM ';
-									SET @sqlScripts = @sqlScripts +     @schema + N'.' + @SRC_table + N' a LEFT JOIN ' + @schema + N'.' + @CUR_table + N' b ON ';
-									SET @sqlScripts = @sqlScripts +         N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
-									SET @sqlScripts = @sqlScripts + N'WHERE ';
-									SET @sqlScripts = @sqlScripts +     N'b.' + @BIHashColumnName + ' IS NULL ';
+									SET @sqlScript =               N'SELECT '
+									SET @sqlScript = @sqlScript +     N'a.' + @BIHashColumnName + ' ';
+									SET @sqlScript = @sqlScript + N'INTO ';
+									SET @sqlScript = @sqlScript +     N'##incrementObjects_new ';
+									SET @sqlScript = @sqlScript + N'FROM ';
+									SET @sqlScript = @sqlScript +     @schema + N'.' + @SRC_table + N' a LEFT JOIN ' + @schema + N'.' + @CUR_table + N' b ON ';
+									SET @sqlScript = @sqlScript +         N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
+									SET @sqlScript = @sqlScript + N'WHERE ';
+									SET @sqlScript = @sqlScript +     N'b.' + @BIHashColumnName + ' IS NULL ';
 									
 									----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 										IF(@debug = 1)
@@ -2820,7 +2916,7 @@ BEGIN
 												SET @scriptCode   = 'COD-2000I';
 												SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 												SET @status       = 'Information';
-												SET @SQL          = @sqlScripts;
+												SET @SQL          = ISNULL(@sqlScript,'');
 												IF(@loggingType IN (1,3))
 													BEGIN
 														INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2831,7 +2927,7 @@ BEGIN
 											END
 									----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 										
-									EXEC(@sqlScripts);
+									EXEC(@sqlScript);
 									
 									SET @INT = @@ROWCOUNT;
 									
@@ -2881,16 +2977,12 @@ BEGIN
 								END TRY
 								BEGIN CATCH
 									SET @continue = 0;
-									
-									IF OBJECT_ID ('tempdb..##incrementObjects_new') IS NOT NULL
-										DROP TABLE ##incrementObjects_new;
-									
 									----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 										SET @logTreeLevel = 3;
-										SET @scriptCode   = 'COD-3000E';
-										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to get new rows';
+										SET @scriptCode   = 'COD-3900E';
+										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 										SET @status       = 'ERROR';
-										SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),N'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+										SET @SQL          = ISNULL(@sqlScript,'');
 										IF(@loggingType IN (1,3))
 											BEGIN
 												INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2941,7 +3033,7 @@ BEGIN
 														)
 												);
 										--INSERT - 1
-											SET @sqlScripts =               N'INSERT INTO ' + @schema + N'.' + @CUR_table + N' (' + @columns + N') ';
+											SET @sqlScript =               N'INSERT INTO ' + @schema + N'.' + @CUR_table + N' (' + @columns + N') ';
 											
 											--GETTINGS COLUMNS SRC TABLE
 												SET @columns = (
@@ -2962,12 +3054,12 @@ BEGIN
 														)
 												);
 										--INSERT - 2
-											SET @sqlScripts = @sqlScripts +     N'SELECT ';
-											SET @sqlScripts = @sqlScripts +         @columns;
-											SET @sqlScripts = @sqlScripts +         N',''' + @BIBeginDate_varchar + ''' AS ' + @BIBeginDateColumnName + ' ';
-											SET @sqlScripts = @sqlScripts +     N'FROM ';
-											SET @sqlScripts = @sqlScripts +         N'##incrementObjects_new a INNER JOIN ' + @schema + N'.' + @SRC_table + N' (NOLOCK) b ON ';
-											SET @sqlScripts = @sqlScripts +             N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
+											SET @sqlScript = @sqlScript +     N'SELECT ';
+											SET @sqlScript = @sqlScript +         @columns;
+											SET @sqlScript = @sqlScript +         N',''' + @BIBeginDate_varchar + ''' AS ' + @BIBeginDateColumnName + ' ';
+											SET @sqlScript = @sqlScript +     N'FROM ';
+											SET @sqlScript = @sqlScript +         N'##incrementObjects_new a INNER JOIN ' + @schema + N'.' + @SRC_table + N' (NOLOCK) b ON ';
+											SET @sqlScript = @sqlScript +             N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
 											
 											----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 												IF(@debug = 1)
@@ -2976,18 +3068,18 @@ BEGIN
 														SET @scriptCode   = 'COD-2100I';
 														SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 														SET @status       = 'Information';
-														SET @SQL          = @sqlScripts;
+														SET @SQL          = ISNULL(@sqlScript,'');
 														IF(@loggingType IN (1,3))
 															BEGIN
 																INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
-																VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sqlScripts,@variables);
+																VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sqlScript,@variables);
 															END
 														IF(@loggingType IN (2,3))
 															RAISERROR(@message,10,1);
 													END
 											----------------------------------------------------- END INSERT LOG ----------------------------------------------------- 
 
-											EXEC(@sqlScripts);
+											EXEC(@sqlScript);
 											
 											SET @INT = @@ROWCOUNT;
 											
@@ -3016,7 +3108,7 @@ BEGIN
 													SET @continue = 0;
 													----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 														SET @logTreeLevel = 3;
-														SET @scriptCode   = 'COD-3100E';
+														SET @scriptCode   = 'COD-4000E';
 														SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'No Rows Affected';
 														SET @status       = 'ERROR';
 														SET @SQL          = '';
@@ -3035,16 +3127,12 @@ BEGIN
 										END TRY
 										BEGIN CATCH
 											SET @continue = 0;
-											
-											IF OBJECT_ID ('tempdb..##incrementObjects_new') IS NOT NULL
-												DROP TABLE ##incrementObjects_new;
-											
 											----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 												SET @logTreeLevel = 3;
-												SET @scriptCode   = 'COD-3200E';
-												SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'An error occurred while trying to insert the new rows into the CUR table';
+												SET @scriptCode   = 'COD-4100E';
+												SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 												SET @status       = 'ERROR';
-												SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+												SET @SQL          = ISNULL(@sqlScript,'');
 												IF(@loggingType IN (1,3))
 													BEGIN
 														INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -3119,15 +3207,15 @@ BEGIN
 							
 							IF OBJECT_ID (@schema + N'.' + @FNL_table + '_autoBackup') IS NOT NULL
 								BEGIN
-									SET @sqlScripts = 'DROP TABLE ' + @schema + N'.' + @FNL_table + '_autoBackup'; 
-									EXEC(@sqlScripts);	
+									SET @sqlScript = 'DROP TABLE ' + @schema + N'.' + @FNL_table + '_autoBackup'; 
+									EXEC(@sqlScript);	
 								END
 							
-							SET @sqlScripts =               N'SELECT * ';
-							SET @sqlScripts = @sqlScripts + N'INTO ';
-							SET @sqlScripts = @sqlScripts +     @schema + N'.' + @FNL_table + '_autoBackup ';
-							SET @sqlScripts = @sqlScripts + N'FROM ';
-							SET @sqlScripts = @sqlScripts +     @schema + N'.' + @FNL_table + ' ';
+							SET @sqlScript =               N'SELECT * ';
+							SET @sqlScript = @sqlScript + N'INTO ';
+							SET @sqlScript = @sqlScript +     @schema + N'.' + @FNL_table + '_autoBackup ';
+							SET @sqlScript = @sqlScript + N'FROM ';
+							SET @sqlScript = @sqlScript +     @schema + N'.' + @FNL_table + ' ';
 							
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								IF(@debug = 1)
@@ -3136,7 +3224,7 @@ BEGIN
 										SET @scriptCode   = 'COD-2200I';
 										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 										SET @status       = 'Information';
-										SET @SQL          = @sqlScripts;
+										SET @SQL          = ISNULL(@sqlScript,'');
 										IF(@loggingType IN (1,3))
 											BEGIN
 												INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -3147,7 +3235,7 @@ BEGIN
 									END 
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 			
-							EXEC(@sqlScripts);
+							EXEC(@sqlScript);
 							
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								IF(@debug = 1)
@@ -3168,8 +3256,8 @@ BEGIN
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 						
 						--DROP FINAL TABLE	
-							SET @sqlScripts = 'DROP TABLE ' + @schema + N'.' + @FNL_table;
-							EXEC(@sqlScripts);
+							SET @sqlScript = 'DROP TABLE ' + @schema + N'.' + @FNL_table;
+							EXEC(@sqlScript);
 					END
 					
 				IF(@finalTableIsCUR = 1)
@@ -3192,7 +3280,7 @@ BEGIN
 								END
 						----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 						
-						SET @sqlScripts = N'sp_rename ''' + @schema + N'.' + @CUR_table + N''', ''' + @FNL_table + N'''';
+						SET @sqlScript = N'sp_rename ''' + @schema + N'.' + @CUR_table + N''', ''' + @FNL_table + N'''';
 						
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 							IF(@debug = 1)
@@ -3201,7 +3289,7 @@ BEGIN
 									SET @scriptCode   = 'COD-2300I';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 									SET @status       = 'Information';
-									SET @SQL          = @sqlScripts;
+									SET @SQL          = ISNULL(@sqlScript,'');
 									IF(@loggingType IN (1,3))
 										BEGIN
 											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -3212,7 +3300,7 @@ BEGIN
 								END
 						----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 						
-						EXEC(@sqlScripts)
+						EXEC(@sqlScript)
 						
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 							IF(@debug = 1)
@@ -3252,7 +3340,7 @@ BEGIN
 								END
 						----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 						
-						SET @sqlScripts = N'sp_rename ''' + @schema + N'.' + @SRC_table + N''', ''' + @FNL_table + N'''';
+						SET @sqlScript = N'sp_rename ''' + @schema + N'.' + @SRC_table + N''', ''' + @FNL_table + N'''';
 						
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 							IF(@debug = 1)
@@ -3261,7 +3349,7 @@ BEGIN
 									SET @scriptCode   = 'COD-2400I';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 									SET @status       = 'Information';
-									SET @SQL          = @sqlScripts;
+									SET @SQL          = ISNULL(@sqlScript,'');
 									IF(@loggingType IN (1,3))
 										BEGIN
 											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -3272,7 +3360,7 @@ BEGIN
 								END
 						----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 						
-						EXEC(@sqlScripts)
+						EXEC(@sqlScript)
 						
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 							IF(@debug = 1)
