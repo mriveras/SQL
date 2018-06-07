@@ -828,9 +828,9 @@ BEGIN
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 							SET @logTreeLevel = 4;
 							SET @scriptCode   = 'COD-1000E';
-							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Error while trying to drop Temp Hash Table (' + @destinationTempHash + ')';
+							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 							SET @status       = 'ERROR';
-							SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+							SET @SQL          = ISNULL(@sqlScript,'');
 							IF(@loggingType IN (1,3))
 								BEGIN
 									INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1049,9 +1049,9 @@ WHERE ';
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 4;
 									SET @scriptCode   = 'COD-1100E';
-									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Error while trying to create Temp Hash Table (' + @destinationTempHash + ')';
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 									SET @status       = 'ERROR';
-									SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+									SET @SQL          = ISNULL(@sqlScript,'');
 									IF(@loggingType IN (1,3))
 										BEGIN
 											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1168,9 +1168,9 @@ WHERE ';
 								---------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 4;
 									SET @scriptCode   = 'COD-1200E';
-									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Error while trying to drop Destination Table (' + @destinationObject + ')';
-									SET @status       = 'ERROR';
-									SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+						   			SET @status       = 'ERROR';
+									SET @SQL          = ISNULL(@sqlScript,'');
 									IF(@loggingType IN (1,3))
 										BEGIN
 											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1265,9 +1265,9 @@ WHERE ';
 								---------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 4;
 									SET @scriptCode   = 'COD-1300E';
-									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Error while trying to generate the Destination Table (' + @destinationObject + ')';
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 									SET @status       = 'ERROR';
-									SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+									SET @SQL          = ISNULL(@sqlScript,'');
 									IF(@loggingType IN (1,3))
 										BEGIN
 											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1365,9 +1365,9 @@ WHERE ';
 								---------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 4;
 									SET @scriptCode   = 'COD-1400E';
-									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Error while trying to drop Temp Hash Table (' + @destinationObject + ')';
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 									SET @status       = 'ERROR';
-									SET @SQL          = 'SQL Error: line(' + ISNULL(CONVERT(VARCHAR(20),ERROR_LINE()),'') + ') - Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+									SET @SQL          = ISNULL(@sqlScript,'');
 									IF(@loggingType IN (1,3))
 										BEGIN
 											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1492,4 +1492,3 @@ WHERE ';
 			END 
 END
 GO
-
