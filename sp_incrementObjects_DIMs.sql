@@ -345,7 +345,7 @@ BEGIN
 								SET @scriptCode   = 'COD-100I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScript;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -465,7 +465,7 @@ BEGIN
 								SET @scriptCode   = 'COD-200I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScript;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -591,7 +591,7 @@ BEGIN
 										SET @scriptCode   = 'COD-300I';
 										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 										SET @status       = 'Information';
-										SET @SQL          = @sqlScript;
+										SET @SQL          = ISNULL(@sqlScript,'');
 										IF(@loggingType IN (1,3))
 											BEGIN
 												INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -651,7 +651,7 @@ BEGIN
 								SET @scriptCode   = 'COD-400I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScript;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -749,7 +749,7 @@ BEGIN
 								SET @scriptCode   = 'COD-500I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScript;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -846,7 +846,7 @@ BEGIN
 								SET @scriptCode   = 'COD-600I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScript;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -945,7 +945,7 @@ BEGIN
 								SET @scriptCode   = 'COD-700I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScript;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -987,7 +987,7 @@ BEGIN
 									SET @scriptCode   = 'COD-800I';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 									SET @status       = 'Information';
-									SET @SQL          = @sqlScript;
+									SET @SQL          = ISNULL(@sqlScript,'');
 									IF(@loggingType IN (1,3))
 										BEGIN
 											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1120,7 +1120,7 @@ BEGIN
 									SET @scriptCode   = 'COD-900I';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 									SET @status       = 'Information';
-									SET @SQL          = @sqlScript;
+									SET @SQL          = ISNULL(@sqlScript,'');
 									IF(@loggingType IN (1,3))
 										BEGIN
 											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1219,7 +1219,7 @@ BEGIN
 								SET @scriptCode   = 'COD-1000I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScript;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1339,7 +1339,7 @@ BEGIN
 								SET @scriptCode   = 'COD-1100I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScript;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1459,7 +1459,7 @@ BEGIN
 								SET @scriptCode   = 'COD-1200I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScript;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1579,7 +1579,7 @@ BEGIN
 								SET @scriptCode   = 'COD-1300I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScript;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1699,7 +1699,7 @@ BEGIN
 								SET @scriptCode   = 'COD-1400I';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 								SET @status       = 'Information';
-								SET @SQL          = @sqlScript;
+								SET @SQL          = ISNULL(@sqlScript,'');
 								IF(@loggingType IN (1,3))
 									BEGIN
 										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1854,7 +1854,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1500I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScript;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -1968,7 +1968,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1600I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScript;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 											BEGIN
 												INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2092,7 +2092,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1700I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScript;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2248,7 +2248,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1800I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScript;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
@@ -2373,7 +2373,7 @@ BEGIN
 											SET @scriptCode   = 'COD-1900I';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Executing SQL script';
 											SET @status       = 'Information';
-											SET @SQL          = @sqlScript;
+											SET @SQL          = ISNULL(@sqlScript,'');
 											IF(@loggingType IN (1,3))
 												BEGIN
 													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
