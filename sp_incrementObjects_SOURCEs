@@ -3062,14 +3062,17 @@ BEGIN
 																SELECT 
 																	N',[' + a.name + N']'
 																FROM
-																	sys.columns a
+																	sys.columns a INNER JOIN sys.columns b ON
+																		    b.object_id = OBJECT_ID(@schema + N'.' + @CUR_table)
+																		AND a.object_id = OBJECT_ID(@schema + N'.' + @SRC_table)
+																		AND b.name = a.name
 																WHERE
-																	a.object_id = OBJECT_ID(@schema + N'.' + @CUR_table)
+																	b.name != @BIBeginDateColumnName
 																ORDER BY
-																	a.column_id ASC
+																	b.column_id ASC
 																FOR XML PATH(''), TYPE
 															).value('.', 'VARCHAR(MAX)'), 1, 1, ''
-														)
+														) + N',[' + @BIBeginDateColumnName + N']'
 												);
 										--INSERT - 1
 											SET @sqlScript =               N'INSERT INTO ' + @schema + N'.' + @CUR_table + N' (' + @columns + N') ';
@@ -3086,6 +3089,8 @@ BEGIN
 																		    b.object_id = OBJECT_ID(@schema + N'.' + @CUR_table)
 																		AND a.object_id = OBJECT_ID(@schema + N'.' + @SRC_table)
 																		AND b.name = a.name
+																WHERE
+																	b.name != @BIBeginDateColumnName
 																ORDER BY
 																	b.column_id ASC
 																FOR XML PATH(''), TYPE
