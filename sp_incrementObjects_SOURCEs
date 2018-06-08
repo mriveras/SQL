@@ -2512,7 +2512,7 @@ BEGIN
 								
 								IF OBJECT_ID ('tempdb..##incrementObjects_changeDelete') IS NOT NULL
 									DROP TABLE ##incrementObjects_changeDelete;	
-								
+										
 										SET @sqlScript =               N'SELECT ';
 										SET @sqlScript = @sqlScript +     N'a.' + @BIHashColumnName + ' ';
 										SET @sqlScript = @sqlScript + N'INTO ';
@@ -2633,9 +2633,48 @@ BEGIN
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 								
 							BEGIN TRY
-								SET @sqlScript =               N'INSERT INTO ' + @schema + N'.' + @HST_table + N' ';
+								--GETTINGS COLUMNS HST TABLE
+									SET @columns = (
+										SELECT
+											STUFF(
+												(
+													SELECT 
+														N',[' + a.name + N']'
+													FROM
+														sys.columns a INNER JOIN sys.columns b ON
+															    a.object_id = OBJECT_ID(@schema + N'.' + @CUR_table)
+															AND b.object_id = OBJECT_ID(@schema + N'.' + @HST_table)
+															AND b.name = a.name
+													ORDER BY
+														a.name ASC
+													FOR XML PATH(''), TYPE
+												).value('.', 'VARCHAR(MAX)'), 1, 1, ''
+											) + N',[' + @BIEndDateColumnName + N']'
+									);
+							
+								SET @sqlScript =               N'INSERT INTO ' + @schema + N'.' + @HST_table + N' (' + @columns + N') ';
+								
+								--GETTINGS COLUMNS CUR TABLE
+									SET @columns = (
+										SELECT
+											STUFF(
+												(
+													SELECT 
+														N',b.[' + a.name + N']'
+													FROM
+														sys.columns a INNER JOIN sys.columns b ON
+															    a.object_id = OBJECT_ID(@schema + N'.' + @CUR_table)
+															AND b.object_id = OBJECT_ID(@schema + N'.' + @HST_table)
+															AND b.name = a.name
+													ORDER BY
+														a.name ASC
+													FOR XML PATH(''), TYPE
+												).value('.', 'VARCHAR(MAX)'), 1, 1, ''
+											)
+									);
+								
 								SET @sqlScript = @sqlScript +     N'SELECT ';
-								SET @sqlScript = @sqlScript +         N'b.* ';
+								SET @sqlScript = @sqlScript +         @columns;
 								SET @sqlScript = @sqlScript +         N',''' + @BIBeginDate_varchar + ''' AS ' + @BIEndDateColumnName + ' ';
 								SET @sqlScript = @sqlScript +     N'FROM ';
 								SET @sqlScript = @sqlScript +         N'##incrementObjects_changeDelete a INNER JOIN ' + @schema + N'.' + @CUR_table + N' (NOLOCK) b ON ';
