@@ -97,13 +97,13 @@ BEGIN
 		,@logSpaceTree        NVARCHAR(5)    = '    '
 		,@message             VARCHAR(500)   = ''
 		,@SQL                 VARCHAR(4000)  = ''
+		,@variables           VARCHAR(2500)  = ''
 	--FLAGS VARIABLES
 		,@FactHash            TINYINT        = 0
 		,@changesFound        TINYINT        = 0
 		,@dateColumnSpecified TINYINT        = 0
 		,@dateColumnIsNumeric TINYINT        = 0
 		,@factHashIsNew       TINYINT        = 0
-		,@variables           VARCHAR(2500)  = ''
 	--GENERAL VARIABLES
 		,@dimHashIndexFull    NVARCHAR(256)  = N''
 		,@fromObjectFull      NVARCHAR(256)  = N''
@@ -1016,7 +1016,7 @@ BEGIN
 											STUFF(
 												(
 													SELECT
-														N' INNER JOIN ' + dimSchemaName + N'.' + b.dimTableName + N' ' + b.dimTableAlias + N' (NOLOCK) ON ' + b.dimTableAlias + N'.' + dimColumnName + N' = a1.' + b.factColumnName
+														N' INNER JOIN ' + dimSchemaName + N'.' + b.dimTableName + N' ' + b.dimTableAlias + N' (NOLOCK) ON ' + b.dimTableAlias + N'.' + dimColumnName + N' = a1.' + b.factColumnName + N' AND ' + b.dimTableAlias + N'.BI_beginDate <= GETDATE() AND ' + b.dimTableAlias + N'.BI_endDate >= GETDATE()'
 													FROM
 														ObjectsColumns b
 													WHERE
@@ -1885,13 +1885,7 @@ BEGIN
 													SET @sqlScript = N'SELECT aaa.BI_HFR
 																		INTO ##DHI_factNew
 																		FROM
-																			' + @fromTempObjectFull + ' aaa LEFT JOIN (
-																				SELECT a.BI_HFR
-																				FROM
-																					' + @toObjectFull + ' a INNER JOIN ' + @dimHashIndexFull + ' b ON 
-																						    b.AsAtCalendarSKey = ( SELECT MAX(aa.AsAtCalendarSKey) FROM ' + @dimHashIndexFull + N' aa WHERE aa.AsAtCalendarSKey <= CAST(CONVERT(VARCHAR(8),DATEADD(DAY,-1,GETDATE()),112) AS INT) )
-																						AND b.BI_HFR           = a.BI_HFR
-																			) bbb ON
+																			' + @fromTempObjectFull + ' aaa LEFT JOIN ' + @toObjectFull + N' bbb ON
 																				bbb.BI_HFR = aaa.BI_HFR
 																		WHERE
 																			bbb.BI_HFR IS NULL';
