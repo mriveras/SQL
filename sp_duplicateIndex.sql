@@ -111,68 +111,99 @@ BEGIN
 						(
 							SELECT
 								 aaa.tableName
-								,aaa.indexName
+								,CASE
+									WHEN (aaa.is_primary_key = 1) THEN 'PK_'
+									WHEN (aaa.is_primary_key = 0 AND aaa.indexType = 1) THEN 'UX_'
+									WHEN (aaa.is_primary_key = 0 AND aaa.indexType = 2) THEN 'IX_'
+								END + aaa.objectName + '_' 
+								+ CONVERT(
+									 VARCHAR(3)
+									,aaa.indexNumber
+								) AS indexName
 								,aaa.indexNumber
-								,(
-									STUFF(
-										(
-											SELECT 
-												N',[' + bbbx.name + N']'
-											FROM
-												sys.index_columns aaax INNER JOIN sys.columns bbbx ON
-													    bbbx.object_id = aaax.object_id
-													AND bbbx.column_id = aaax.column_id
-											WHERE 
-												    aaax.object_id = aaa.object_id
-												AND aaax.index_id  = aaa.index_id
-											ORDER BY
-												aaax.index_column_id ASC
-											FOR XML PATH(''), TYPE
-										).value('.', 'VARCHAR(MAX)'), 1, 1, ''
-									) 
-								) AS columns
+								,aaa.columns
 								,aaa.indexType
-								,aaa.is_primary_key
+								,aaa.is_primary_key						
+								
 							FROM
 								(
 									SELECT
-										 @toSchemaName + N'.' + @toTableName AS tableName
-										,CASE
-											WHEN (aa.is_primary_key = 1) THEN 'PK_'
-											WHEN (aa.is_primary_key = 0 AND aa.indexType = 1) THEN 'UX_'
-											WHEN (aa.is_primary_key = 0 AND aa.indexType = 2) THEN 'IX_'
-										END + dd.name + '_' 
-										+ CONVERT(
-											 VARCHAR(3)
-											,aa.indexNumber
-										) AS indexName
-										,aa.indexNumber
+										 aa.tableName
+										,aa.objectName
 										,aa.object_id
 										,aa.index_id
 										,aa.indexType
+										,aa.indexNameOld
 										,aa.is_primary_key
+										,ROW_NUMBER() OVER( 
+											ORDER BY 
+												aa.index_id ASC
+										) AS indexNumber
+										,aa.columns
 									FROM
 										(
 											SELECT
+												DISTINCT
 												 a.object_id
 												,a.index_id
-												,ROW_NUMBER() OVER( 
-													ORDER BY 
-														a.index_id ASC
-												) AS indexNumber
 												,a.type AS indexType
 												,a.name AS indexNameOld
 												,a.is_primary_key
+												,STUFF(
+													(
+														SELECT 
+															N',[' + bbby.name + N']'
+														FROM
+															sys.index_columns aaay INNER JOIN sys.columns bbby ON
+																    bbby.object_id = aaay.object_id
+																AND bbby.column_id = aaay.column_id
+														WHERE 
+															    aaay.object_id = b.object_id
+															AND aaay.index_id  = b.index_id
+														ORDER BY
+															aaay.index_column_id ASC
+														FOR XML PATH(''), TYPE
+													).value('.', 'VARCHAR(MAX)'), 1, 1, ''
+												) columns
+												,@toSchemaName + N'.' + @toTableName AS tableName
+												,@toTableName AS objectName
+											FROM
+												sys.indexes a INNER JOIN sys.index_columns b ON
+													    a.object_id = OBJECT_ID(@fromSchemaName + N'.' + @fromTableName)
+													AND b.object_id = a.object_id
+													AND b.index_id  = a.index_id
+											WHERE 
+												a.name IS NOT NULL
+										) aa LEFT JOIN (
+											SELECT
+												a.type AS indexType
+												,a.is_primary_key
+												,STUFF(
+													(
+														SELECT 
+															N',[' + bbby.name + N']'
+														FROM
+															sys.index_columns aaay INNER JOIN sys.columns bbby ON
+																    aaay.object_id = a.object_id
+																AND bbby.object_id = aaay.object_id
+																AND bbby.column_id = aaay.column_id
+														ORDER BY
+															aaay.index_column_id ASC
+														FOR XML PATH(''), TYPE
+													).value('.', 'VARCHAR(MAX)'), 1, 1, ''
+												) columns
 											FROM
 												sys.indexes a 
-											WHERE
-												    a.object_id = OBJECT_ID(@fromSchemaName + N'.' + @fromTableName)
-												AND a.name IS NOT NULL
-										) aa INNER JOIN sys.objects dd ON
-											dd.object_id = aa.object_id
-										INNER JOIN sys.schemas ee ON
-											ee.[schema_id] = dd.[schema_id]
-									) aaa
+											WHERE 
+												    a.object_id = OBJECT_ID(@toSchemaName + N'.' + @toTableName)
+												AND	a.name IS NOT NULL
+										) bb ON
+											    bb.columns        = aa.columns
+											AND bb.is_primary_key = aa.is_primary_key
+											AND bb.indexType      = aa.indexType
+									WHERE
+										bb.columns IS NULL
+								) aaa
 						) aaaa LEFT JOIN (
 							SELECT
 								 aa2.indexType
