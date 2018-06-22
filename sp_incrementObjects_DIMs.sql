@@ -1111,7 +1111,25 @@ BEGIN
 							END
 					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					BEGIN TRY
-						SET @sqlScript = N'EXEC dbo.sp_generateHashKey ''' + @dimHashSchema + ''',''' + @dimHashTableName + ''',''' + @dimHashSchema + ''',''' + @dimHashTableName + ''','''','''','''',0,3';
+						SET @columns = (
+							SELECT
+								STUFF(
+									(
+										SELECT   
+											N',' + a.name
+										FROM     
+											sys.columns a 
+										WHERE
+											    a.object_id = OBJECT_ID(@dimHashFullObject)
+											AND a.name NOT IN ('BI_endDate','BI_HFR')
+										ORDER BY 
+											a.name ASC
+										FOR XML  PATH(''), TYPE
+									).value('.', 'VARCHAR(MAX)'), 1, 1, ''
+								)
+						);
+						
+						SET @sqlScript = N'EXEC dbo.sp_generateHashKey ''' + @dimHashSchema + ''',''' + @dimHashTableName + ''',''' + @dimHashSchema + ''',''' + @dimHashTableName + ''',''' + @columns + ''','''','''',1,3';
 									
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 							IF(@debug = 1)
