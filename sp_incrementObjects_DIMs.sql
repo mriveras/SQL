@@ -15,7 +15,7 @@ AS
 	MODIFICATIONS:
 		
 	LAST USED LOGGING IDS:
-		- ERRORS      (COD-3100E)
+		- ERRORS      (COD-3200E)
 		- INFORMATION (COD-1900I)
 */
 BEGIN
@@ -234,73 +234,46 @@ BEGIN
 							   	RAISERROR(@message,10,1);
 						END 
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-				IF(
-					EXISTS(
-						SELECT 1
-						FROM   dbo.BIConfig
-						WHERE  type = 'REPROCESS-DATE-DIM'
-					)
-				)
-					BEGIN 
-						BEGIN TRY
-							SET @asAtDateProcessed = (
-								SELECT CONVERT(DATETIME,a.value1)
-								FROM dbo.BIConfig a
-								WHERE a.type = 'REPROCESS-DATE-DIM'
-							)
-							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-								IF(@debug = 1)
-									BEGIN
-										SET @logTreeLevel = 3;
-										SET @scriptCode   = '';
-										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'asAtDateProcessed assigned to (' + CONVERT(VARCHAR(50),@asAtDateProcessed,100) + ')';
-										SET @status       = 'Information';
-										SET @SQL          = '';
-										IF(@loggingType IN (1,3))
-											BEGIN
-												INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
-												VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
-											END
-										IF(@loggingType IN (2,3))
-										   	RAISERROR(@message,10,1);
-									END 
-							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-						END TRY
-						BEGIN CATCH
-							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-100E';
-								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
-								SET @status       = 'ERROR';
-								SET @SQL          = '';
-								IF(@loggingType IN (1,3))
-									BEGIN
-										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
-										VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
-									END
-								IF(@loggingType IN (2,3))
-								   	RAISERROR(@message,11,1);
-							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-						END CATCH
-					END
-				ELSE
-					BEGIN
-						SET @continue = 0;
+					BEGIN TRY
+						SET @asAtDateProcessed = (
+							SELECT CONVERT(DATETIME,a.value1)
+							FROM dbo.BIConfig a
+							WHERE a.type = 'REPROCESS-DATE-DIM'
+						)
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-200E';
-								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Reload Process Activated. However, the config table does not have value';
-								SET @status       = 'ERROR';
-								SET @SQL          = '';
-								IF(@loggingType IN (1,3))
-									BEGIN
-										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
-										VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
-									END
-								IF(@loggingType IN (2,3))
-								   	RAISERROR(@message,11,1);
-							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-					END
+							IF(@debug = 1)
+								BEGIN
+									SET @logTreeLevel = 3;
+									SET @scriptCode   = '';
+									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'asAtDateProcessed assigned to (' + CONVERT(VARCHAR(50),@asAtDateProcessed,100) + ')';
+									SET @status       = 'Information';
+									SET @SQL          = '';
+									IF(@loggingType IN (1,3))
+										BEGIN
+											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+											VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+										END
+									IF(@loggingType IN (2,3))
+									   	RAISERROR(@message,10,1);
+								END 
+						----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+					END TRY
+					BEGIN CATCH
+						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+							SET @logTreeLevel = 3;
+							SET @scriptCode   = 'COD-100E';
+							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+							SET @status       = 'ERROR';
+							SET @SQL          = '';
+							IF(@loggingType IN (1,3))
+								BEGIN
+									INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+									VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+								END
+							IF(@loggingType IN (2,3))
+							   	RAISERROR(@message,11,1);
+						----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+					END CATCH
 				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 					IF(@debug = 1)
 						BEGIN
@@ -331,7 +304,7 @@ BEGIN
 			SET @continue = 0;
 			----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 				SET @logTreeLevel = 3;
-				SET @scriptCode   = 'COD-100E';
+				SET @scriptCode   = 'COD-200E';
 				SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The Parameter @sourceSchema can not be empty or NULL';
 				SET @status       = 'ERROR';
 				SET @SQL          = '';
@@ -349,7 +322,7 @@ BEGIN
 			SET @continue = 0;
 			----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 				SET @logTreeLevel = 3;
-				SET @scriptCode   = 'COD-200E';
+				SET @scriptCode   = 'COD-300E';
 				SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The Parameter @sourceObjectName can not be empty or NULL';
 				SET @status       = 'ERROR';
 				SET @SQL          = '';
@@ -367,7 +340,7 @@ BEGIN
 			SET @continue = 0;
 			----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 				SET @logTreeLevel = 3;
-				SET @scriptCode   = 'COD-300E';
+				SET @scriptCode   = 'COD-400E';
 				SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The Parameter @dimHashSchema can not be empty or NULL';
 				SET @status       = 'ERROR';
 				SET @SQL          = '';
@@ -385,7 +358,7 @@ BEGIN
 			SET @continue = 0;
 			----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 				SET @logTreeLevel = 3;
-				SET @scriptCode   = 'COD-400E';
+				SET @scriptCode   = 'COD-500E';
 				SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The Parameter @dimHashTableName can not be empty or NULL';
 				SET @status       = 'ERROR';
 				SET @SQL          = '';
@@ -417,7 +390,7 @@ BEGIN
 				SET @continue = 0;
 				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 					SET @logTreeLevel = 3;
-					SET @scriptCode   = 'COD-500E';
+					SET @scriptCode   = 'COD-600E';
 					SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The object ' + @sourceFullObject + ' does not exists or is not a valid Table or VIEW';
 					SET @status       = 'ERROR';
 					SET @SQL          = '';
@@ -516,7 +489,7 @@ BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-600E';
+								SET @scriptCode   = 'COD-700E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The Source Object (' + @sourceFullObject + ') is emptyt';
 								SET @status       = 'ERROR';
 								SET @SQL          = '';
@@ -554,7 +527,7 @@ BEGIN
 					SET @continue = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-700E';
+						SET @scriptCode   = 'COD-800E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
 						SET @SQL          = ISNULL(@sqlScript,'');
@@ -780,7 +753,7 @@ BEGIN
 					SET @continue = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-800E';
+						SET @scriptCode   = 'COD-900E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
 						SET @SQL          = ISNULL(@sqlScript,'');
@@ -839,7 +812,7 @@ BEGIN
 					SET @continue = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-900E';
+						SET @scriptCode   = 'COD-1000E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
 						SET @SQL          = ISNULL(@sqlScript,'');
@@ -937,7 +910,7 @@ BEGIN
 					SET @continue   = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-1000E';
+						SET @scriptCode   = 'COD-1100E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
 						SET @SQL          = ISNULL(@sqlScript,'');
@@ -1034,7 +1007,7 @@ BEGIN
 					SET @continue   = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-1100E';
+						SET @scriptCode   = 'COD-1200E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
 						SET @SQL          = ISNULL(@sqlScript,'');
@@ -1159,7 +1132,7 @@ BEGIN
 
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 4;
-									SET @scriptCode   = 'COD-1200E';
+									SET @scriptCode   = 'COD-1300E';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The DIM table does not have records after its creation';
 									SET @status       = 'ERROR';
 									SET @SQL          = ''
@@ -1213,7 +1186,7 @@ BEGIN
 					SET @continue   = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-1300E';
+						SET @scriptCode   = 'COD-1400E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
 						SET @SQL          = ISNULL(@sqlScript,'');
@@ -1326,7 +1299,7 @@ BEGIN
 						SET @continue = 0;
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 							SET @logTreeLevel = 3;
-							SET @scriptCode   = 'COD-1400E';
+							SET @scriptCode   = 'COD-1500E';
 							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 							SET @status       = 'ERROR';
 							SET @SQL          = ISNULL(@sqlScript,'');
@@ -1428,7 +1401,7 @@ BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-1500E';
+								SET @scriptCode   = 'COD-1600E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 								SET @status       = 'ERROR';
 								SET @SQL          = @SQL;
@@ -1446,7 +1419,7 @@ BEGIN
 					SET @continue = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-1600E';
+						SET @scriptCode   = 'COD-1700E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
 						SET @SQL          = ISNULL(@sqlScript,'');
@@ -1548,7 +1521,7 @@ BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-1700E';
+								SET @scriptCode   = 'COD-1800E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 								SET @status       = 'ERROR';
 								SET @SQL          = @SQL;
@@ -1566,7 +1539,7 @@ BEGIN
 					SET @continue = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-1800E';
+						SET @scriptCode   = 'COD-1900E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
 						SET @SQL          = ISNULL(@sqlScript,'');
@@ -1668,7 +1641,7 @@ BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-1900E';
+								SET @scriptCode   = 'COD-2000E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 								SET @status       = 'ERROR';
 								SET @SQL          = @SQL;
@@ -1686,7 +1659,7 @@ BEGIN
 					SET @continue = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-2000E';
+						SET @scriptCode   = 'COD-2100E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
 						SET @SQL          = ISNULL(@sqlScript,'');
@@ -1788,7 +1761,7 @@ BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-2100E';
+								SET @scriptCode   = 'COD-2200E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 								SET @status       = 'ERROR';
 								SET @SQL          = @SQL;
@@ -1806,7 +1779,7 @@ BEGIN
 					SET @continue = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-2200E';
+						SET @scriptCode   = 'COD-2300E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
 						SET @SQL          = ISNULL(@sqlScript,'');
@@ -1908,7 +1881,7 @@ BEGIN
 							SET @continue = 0;
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 								SET @logTreeLevel = 3;
-								SET @scriptCode   = 'COD-2300E';
+								SET @scriptCode   = 'COD-2400E';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @message;
 								SET @status       = 'ERROR';
 								SET @SQL          = @SQL;
@@ -1926,7 +1899,7 @@ BEGIN
 					SET @continue = 0;
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						SET @logTreeLevel = 3;
-						SET @scriptCode   = 'COD-2400E';
+						SET @scriptCode   = 'COD-2500E';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 						SET @status       = 'ERROR';
 						SET @SQL          = ISNULL(@sqlScript,'');
@@ -2090,7 +2063,7 @@ BEGIN
 									
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel  = 3;
-									SET @scriptCode   = 'COD-2500E';
+									SET @scriptCode   = 'COD-2600E';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 									SET @status       = 'ERROR';
 									SET @SQL          = ISNULL(@sqlScript,'');
@@ -2179,7 +2152,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel   = 3;
-											SET @scriptCode     = N'COD-2600E';
+											SET @scriptCode     = N'COD-2700E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + N'No Rows Affected';
 											SET @status         = N'ERROR';
 											SET @SQL        = N'';
@@ -2204,7 +2177,7 @@ BEGIN
 									
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 3;
-									SET @scriptCode   = 'COD-2700E';
+									SET @scriptCode   = 'COD-2800E';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 									SET @status       = 'ERROR';
 									SET @SQL          = ISNULL(@sqlScript,'');
@@ -2325,7 +2298,7 @@ BEGIN
 									
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 3;
-									SET @scriptCode   = 'COD-2800E';
+									SET @scriptCode   = 'COD-2900E';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 									SET @status       = 'ERROR';
 									SET @SQL          = ISNULL(@sqlScript,'');
@@ -2460,7 +2433,7 @@ BEGIN
 										SET @continue = 0;
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											SET @logTreeLevel = 3;
-											SET @scriptCode   = 'COD-2900E';
+											SET @scriptCode   = 'COD-3000E';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'No Rows Affected';
 											SET @status       = 'ERROR';
 											SET @SQL          = '';
@@ -2481,7 +2454,7 @@ BEGIN
 								SET @continue = 0;									
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 3;
-									SET @scriptCode   = 'COD-3000E';
+									SET @scriptCode   = 'COD-3100E';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 									SET @status       = 'ERROR';
 									SET @SQL          = ISNULL(@sqlScript,'');
@@ -2579,7 +2552,7 @@ BEGIN
 								SET @continue = 0;
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									SET @logTreeLevel = 4;
-									SET @scriptCode   = 'COD-3100E';
+									SET @scriptCode   = 'COD-3200E';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 									SET @status       = 'ERROR';
 									SET @SQL          = ISNULL(@sqlScript,'');
