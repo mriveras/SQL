@@ -90,6 +90,7 @@ BEGIN
 		,@DIM                  BIT            = 0
 		,@VIEW                 BIT            = 0
 		,@firstLoad            BIT            = 0
+		,@reloadProcess        BIT            = 0
 	--GENERAL VARIABLES
 		,@tempHashV1ObjectName NVARCHAR(128)  = N''
 		,@sourceFullObject     NVARCHAR(256)  = N''
@@ -97,7 +98,8 @@ BEGIN
 		,@tempHashV1FullObject NVARCHAR(156)  = N''
 		,@sourceObjectId       INT            = 0
 		,@dimHashObjectId      INT            = 0
-		,@columns              NVARCHAR(4000) = N'';
+		,@columns              NVARCHAR(4000) = N''
+		,@asAtDateProcessed    DATETIME       = '';
 		
 	SET @sourceFullObject     = @sourceSchema  + N'.' + @sourceObjectName;
 	SET @sourceObjectId       = OBJECT_ID(@sourceFullObject);
@@ -105,6 +107,27 @@ BEGIN
 	SET @tempHashV1FullObject = @sourceSchema + N'.' + @tempHashV1ObjectName;
 	SET @dimHashFullObject    = @dimHashSchema + N'.' + @dimHashTableName;
 	SET @dimHashObjectId      = OBJECT_ID(@dimHashFullObject);
+	
+	/*-----------------------------------------------------------------------------------------------------------------------------------------------
+	 ***********************************************************************************************************************************************
+	   IF IS A RELOAD PROCESS, CHANGE THE VALUE OF THE COLUMNS VALUE2 IN THE CONFIG TABLE dbo.BIConfig AND SET TO (1) THE VALUE OF THE COLUMN VALUE1
+	   
+	   USE THE FOLLOWING SELECT TO GET THE VALUE OF THE REPROCESS PROCESS IN THE CONFIG TABLE
+	   		- SELECT value1, value2 FROM dbo.BIConfig WHERE type = 'REPROCESS-DATE-DIM';
+	   
+	   USE THE FOLLOWING SCRIPT TO UPDATE THE COLUMN VALUE1 IN THE CONFIG TABLE (1 = Reprocess Activated | 0 = Reprocess No Activated)	
+	   		- UPDATE INTO dbo.BIConfig SET value1 = '0' WHERE type = 'REPROCESS-DATE-DIM';
+	   		
+	   USE THE FOLOWING SCRIPT TO UPDATE THE COLUMN VALUE2 IN THE CONFIG TABLE (As At Date to be reprocessed)
+	   		- UPDATE INTO dbo.BIConfig SET value2 = '31 Dec 9999 11:59:59 PM' WHERE type = 'REPROCESS-DATE-DIM';
+	   		- THE FORMAT FOR THE VALUE OF THIS COLUMNS VALUE1 IS EG '31 Dec 9999 11:59:59 PM'
+	 ***********************************************************************************************************************************************
+	-------------------------------------------------------------------------------------------------------------------------------------------------*/
+		SET @reloadProcess = (SELECT value1 FROM dbo.BIConfig WHERE type = 'REPROCESS-DATE-DIM');
+	/*-----------------------------------------------------------------------------------------------------------------------------------------------
+	 ***********************************************************************************************************************************************
+	 ***********************************************************************************************************************************************
+	-------------------------------------------------------------------------------------------------------------------------------------------------*/
 	
 	SET @variables = ' | @sourceSchema = '         + ISNULL(CONVERT(VARCHAR(128),@sourceSchema)        ,'') +
 					 ' | @sourceObjectName = '     + ISNULL(CONVERT(VARCHAR(128),@sourceObjectName)    ,'') +
@@ -172,6 +195,129 @@ BEGIN
 					RAISERROR(@message,10,1);
 			END
 	----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+	
+	--If the variables is (1) check the existence of the input value at the config table
+		IF(@reloadProcess = 1)
+			BEGIN
+				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+					IF(@debug = 1)
+						BEGIN
+							SET @logTreeLevel = 2;
+							SET @scriptCode   = '';
+							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Reprocess Process activated';
+							SET @status       = 'Information';
+							SET @SQL          = '';
+							IF(@loggingType IN (1,3))
+								BEGIN
+									INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+									VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+								END
+							IF(@loggingType IN (2,3))
+							   	RAISERROR(@message,10,1);
+						END 
+				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+					IF(@debug = 1)
+						BEGIN
+							SET @logTreeLevel = 2;
+							SET @scriptCode   = '';
+							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'BEGIN Getting asAtDateProcessed parameter from Config Table';
+							SET @status       = 'Information';
+							SET @SQL          = '';
+							IF(@loggingType IN (1,3))
+								BEGIN
+									INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+									VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+								END
+							IF(@loggingType IN (2,3))
+							   	RAISERROR(@message,10,1);
+						END 
+				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+				IF(
+					EXISTS(
+						SELECT 1
+						FROM   dbo.BIConfig
+						WHERE  type = 'REPROCESS-DATE-DIM'
+					)
+				)
+					BEGIN 
+						BEGIN TRY
+							SET @asAtDateProcessed = (
+								SELECT CONVERT(DATETIME,a.value1)
+								FROM dbo.BIConfig a
+								WHERE a.type = 'REPROCESS-DATE-DIM'
+							)
+							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+								IF(@debug = 1)
+									BEGIN
+										SET @logTreeLevel = 3;
+										SET @scriptCode   = '';
+										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'asAtDateProcessed assigned to (' + CONVERT(VARCHAR(50),@asAtDateProcessed,100) + ')';
+										SET @status       = 'Information';
+										SET @SQL          = '';
+										IF(@loggingType IN (1,3))
+											BEGIN
+												INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+												VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+											END
+										IF(@loggingType IN (2,3))
+										   	RAISERROR(@message,10,1);
+									END 
+							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+						END TRY
+						BEGIN CATCH
+							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+								SET @logTreeLevel = 3;
+								SET @scriptCode   = 'COD-100E';
+								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+								SET @status       = 'ERROR';
+								SET @SQL          = '';
+								IF(@loggingType IN (1,3))
+									BEGIN
+										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+										VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+									END
+								IF(@loggingType IN (2,3))
+								   	RAISERROR(@message,11,1);
+							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+						END CATCH
+					END
+				ELSE
+					BEGIN
+						SET @continue = 0;
+						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+								SET @logTreeLevel = 3;
+								SET @scriptCode   = 'COD-200E';
+								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Reload Process Activated. However, the config table does not have value';
+								SET @status       = 'ERROR';
+								SET @SQL          = '';
+								IF(@loggingType IN (1,3))
+									BEGIN
+										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+										VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+									END
+								IF(@loggingType IN (2,3))
+								   	RAISERROR(@message,11,1);
+							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+					END
+				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+					IF(@debug = 1)
+						BEGIN
+							SET @logTreeLevel = 2;
+							SET @scriptCode   = '';
+							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'END Getting asAtDateProcessed parameter from Config Table';
+							SET @status       = 'Information';
+							SET @SQL          = '';
+							IF(@loggingType IN (1,3))
+								BEGIN
+									INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+									VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+								END
+							IF(@loggingType IN (2,3))
+							   	RAISERROR(@message,10,1);
+						END 
+				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+			END
 	
 	IF(@sourceSchema IS NULL OR LEN(RTRIM(LTRIM(@sourceSchema))) = 0)
 		BEGIN			
@@ -936,7 +1082,7 @@ BEGIN
 						END
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 				BEGIN TRY
-					SET @sqlScript = N'SELECT *, GETDATE() AS BI_beginDate, CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') AS BI_endDate INTO ' + @dimHashFullObject + N' FROM ' + @tempHashV1FullObject;
+					SET @sqlScript = N'SELECT *, ''' + CONVERT(VARCHAR(50),@asAtDateProcessed) + ''' AS BI_beginDate, CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') AS BI_endDate INTO ' + @dimHashFullObject + N' FROM ' + @tempHashV1FullObject;
 					
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
@@ -1975,7 +2121,7 @@ BEGIN
 								
 							BEGIN TRY
 								SET @sqlScript =               N'UPDATE a ';
-								SET @sqlScript = @sqlScript + N'SET a.BI_endDate = GETDATE() ';
+								SET @sqlScript = @sqlScript + N'SET a.BI_endDate = ''' + CONVERT(VARCHAR(50),@asAtDateProcessed) + '''';
 								SET @sqlScript = @sqlScript + N'FROM ' + @dimHashFullObject + N' a INNER JOIN ##incrementObjects_DIM_changeDelete b ON ';
 								SET @sqlScript = @sqlScript + N'b.BI_HFR = a.BI_HFR ';
 								
@@ -2251,7 +2397,7 @@ BEGIN
 												FOR XML  PATH(''), TYPE
 											).value('.', 'VARCHAR(MAX)'), 1, 1, ''
 										)
-										+ ',GETDATE() AS [BI_beginDate],CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') as [BI_endDate]'
+										+ ',''' + CONVERT(VARCHAR(50),@asAtDateProcessed) + ''' AS [BI_beginDate],CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') as [BI_endDate]'
 								);
 									
 								SET @sqlScript = @sqlScript +     N'SELECT ' + @columns
@@ -2569,3 +2715,4 @@ BEGIN
 			END 
 END
 GO
+
