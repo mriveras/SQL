@@ -72,34 +72,35 @@ BEGIN
 	
 	DECLARE
 	--PROCESS FLOW VARIABLES
-		 @continue             BIT            = 1
-		,@sqlScript           NVARCHAR(MAX)  = N''
-		,@INT                  INT            = 0
+		 @continue                  BIT            = 1
+		,@sqlScript                 NVARCHAR(MAX)  = N''
+		,@INT                       INT            = 0
 	--LOGGING VARIABLES
-		,@executionID          BIGINT         = NEXT VALUE FOR dbo.sq_BI_log_executionID
-		,@execObjectName       VARCHAR(256)   = 'dbo.sp_incrementObjects_DIMs'
-		,@scriptCode           VARCHAR(25)    = ''
-		,@status               VARCHAR(50)    = ''
-		,@logTreeLevel         TINYINT        = 0
-		,@logSpaceTree         VARCHAR(5)     = '    '
-		,@message              VARCHAR(500)   = ''
-		,@SQL                  VARCHAR(4000)  = ''
-		,@variables            VARCHAR(2500)  = ''
+		,@executionID               BIGINT         = NEXT VALUE FOR dbo.sq_BI_log_executionID
+		,@execObjectName            VARCHAR(256)   = 'dbo.sp_incrementObjects_DIMs'
+		,@scriptCode                VARCHAR(25)    = ''
+		,@status                    VARCHAR(50)    = ''
+		,@logTreeLevel              TINYINT        = 0
+		,@logSpaceTree              VARCHAR(5)     = '    '
+		,@message                   VARCHAR(500)   = ''
+		,@SQL                       VARCHAR(4000)  = ''
+		,@variables                 VARCHAR(2500)  = ''
 	--FLAGS VARIABLES
-		,@changesFound         BIT            = 0
-		,@DIM                  BIT            = 0
-		,@VIEW                 BIT            = 0
-		,@firstLoad            BIT            = 0
-		,@reloadProcess        BIT            = 0
+		,@changesFound              BIT            = 0
+		,@DIM                       BIT            = 0
+		,@VIEW                      BIT            = 0
+		,@firstLoad                 BIT            = 0
+		,@reloadProcess             BIT            = 0
 	--GENERAL VARIABLES
-		,@tempHashV1ObjectName NVARCHAR(128)  = N''
-		,@sourceFullObject     NVARCHAR(256)  = N''
-		,@dimHashFullObject    NVARCHAR(256)  = N''
-		,@tempHashV1FullObject NVARCHAR(156)  = N''
-		,@sourceObjectId       INT            = 0
-		,@dimHashObjectId      INT            = 0
-		,@columns              NVARCHAR(4000) = N''
-		,@asAtDateProcessed    DATETIME       = '';
+		,@tempHashV1ObjectName      NVARCHAR(128)  = N''
+		,@sourceFullObject          NVARCHAR(256)  = N''
+		,@dimHashFullObject         NVARCHAR(256)  = N''
+		,@tempHashV1FullObject      NVARCHAR(156)  = N''
+		,@sourceObjectId            INT            = 0
+		,@dimHashObjectId           INT            = 0
+		,@columns                   NVARCHAR(4000) = N''
+		,@asAtDateProcessed         DATETIME       = GETDATE()
+		,@asAtDateProcessed_varchar VARCHAR(50)    = N'';
 		
 	SET @sourceFullObject     = @sourceSchema  + N'.' + @sourceObjectName;
 	SET @sourceObjectId       = OBJECT_ID(@sourceFullObject);
@@ -319,6 +320,12 @@ BEGIN
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 			END
 	
+	--CONVERTING BI_beginDate into VARCHAR
+		IF(@continue = 1)
+			BEGIN
+				SET @asAtDateProcessed_varchar = CONVERT(VARCHAR(50),@asAtDateProcessed,100);
+			END 
+			
 	IF(@sourceSchema IS NULL OR LEN(RTRIM(LTRIM(@sourceSchema))) = 0)
 		BEGIN			
 			SET @continue = 0;
@@ -1082,7 +1089,7 @@ BEGIN
 						END
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 				BEGIN TRY
-					SET @sqlScript = N'SELECT *, ''' + CONVERT(VARCHAR(50),@asAtDateProcessed) + ''' AS BI_beginDate, CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') AS BI_endDate INTO ' + @dimHashFullObject + N' FROM ' + @tempHashV1FullObject;
+					SET @sqlScript = N'SELECT *, ''' + @asAtDateProcessed_varchar + ''' AS BI_beginDate, CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') AS BI_endDate INTO ' + @dimHashFullObject + N' FROM ' + @tempHashV1FullObject;
 					
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
@@ -2121,7 +2128,7 @@ BEGIN
 								
 							BEGIN TRY
 								SET @sqlScript =               N'UPDATE a ';
-								SET @sqlScript = @sqlScript + N'SET a.BI_endDate = ''' + CONVERT(VARCHAR(50),@asAtDateProcessed) + '''';
+								SET @sqlScript = @sqlScript + N'SET a.BI_endDate = ''' + @asAtDateProcessed_varchar + '''';
 								SET @sqlScript = @sqlScript + N'FROM ' + @dimHashFullObject + N' a INNER JOIN ##incrementObjects_DIM_changeDelete b ON ';
 								SET @sqlScript = @sqlScript + N'b.BI_HFR = a.BI_HFR ';
 								
@@ -2397,7 +2404,7 @@ BEGIN
 												FOR XML  PATH(''), TYPE
 											).value('.', 'VARCHAR(MAX)'), 1, 1, ''
 										)
-										+ ',''' + CONVERT(VARCHAR(50),@asAtDateProcessed) + ''' AS [BI_beginDate],CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') as [BI_endDate]'
+										+ ',''' + @asAtDateProcessed_varchar + ''' AS [BI_beginDate],CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') as [BI_endDate]'
 								);
 									
 								SET @sqlScript = @sqlScript +     N'SELECT ' + @columns
@@ -2715,4 +2722,3 @@ BEGIN
 			END 
 END
 GO
-
