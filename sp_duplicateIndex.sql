@@ -1,9 +1,10 @@
 CREATE PROCEDURE dbo.sp_duplicateIndex
 	(
-		 @fromSchemaName NVARCHAR(128)
-		,@fromTableName  NVARCHAR(128)
-		,@toSchemaName   NVARCHAR(128)
-		,@toTableName    NVARCHAR(128)
+		 @fromSchemaName    NVARCHAR(128)
+		,@fromTableName     NVARCHAR(128)
+		,@toSchemaName      NVARCHAR(128)
+		,@toTableName       NVARCHAR(128)
+		,@columnConstraints BIT
 	)
 AS
 BEGIN
@@ -90,6 +91,117 @@ BEGIN
 				SET @continue = 0;
 				SET @message  = 'The object (' + @fromSchemaName + '.' + @fromTableName + ') has no index';
 			END
+		ELSE IF(@columnConstraints IS NULL)
+			BEGIN
+				SET @continue = 0;
+				SET @message  = 'Error - The parameter @columnConstraints is mandatory';
+			END	
+		
+	--GET COLUMN CONSTRAINTS SCRIPTS
+		IF(@continue = 1 AND @columnConstraints = 1)
+			BEGIN
+				DECLARE @colConstraints TABLE (			
+					 script      NVARCHAR(MAX)
+				);
+				
+				INSERT INTO @colConstraints (script)
+					SELECT
+						'ALTER TABLE [' + aa.schemaName + '].[' + aa.tableName + '] ADD CONSTRAINT [' + aa.constraintName + '] DEFAULT ' + aa.defaultValue + ' FOR [' + aa.columnName + '];' AS script 
+					FROM
+						(
+							SELECT 
+								 b.name AS schemaName
+								,a.name AS tableName
+								,d.name AS constraintName
+								,d.definition AS defaultValue
+								,c.name AS columnName
+							FROM 
+								sys.objects a INNER JOIN sys.schemas b ON
+									b.[schema_id] = a.[schema_id]
+								INNER JOIN sys.columns c ON 
+									c.object_id = a.object_id
+								INNER JOIN sys.default_constraints d ON 
+									    d.parent_column_id = c.column_id
+									AND d.object_id        = c.default_object_id
+							WHERE 
+								a.OBJECT_ID = OBJECT_ID(@fromSchemaName + N'.' + @fromTableName)
+						) aa LEFT JOIN (
+							SELECT 
+								 d.definition AS defaultValue
+								,c.name       AS columnName
+							FROM 
+								sys.objects a INNER JOIN sys.schemas b ON
+									b.[schema_id] = a.[schema_id]
+								INNER JOIN sys.columns c ON 
+									c.object_id = a.object_id
+								INNER JOIN sys.default_constraints d ON 
+									    d.parent_column_id = c.column_id
+									AND d.object_id        = c.default_object_id
+							WHERE 
+								a.OBJECT_ID = OBJECT_ID(@toSchemaName + N'.' + @toTableName)
+						) bb ON
+							    REPLACE(REPLACE(bb.defaultValue,'(',''),')','') = REPLACE(REPLACE(aa.defaultValue,'(',''),')','')
+							AND bb.columnName   = aa.columnName
+					WHERE 
+						bb.columnName IS NULL;
+			END
+		
+	--CREATE COLUMN CONSTRAINTS
+		IF(
+			@continue = 1
+			AND @columnConstraints = 1
+			AND EXISTS(
+				SELECT 1
+				FROM @colConstraints
+			)
+		)
+			BEGIN
+				BEGIN TRANSACTION
+				
+				BEGIN TRY
+					IF (SELECT CURSOR_STATUS('global','DI_cursor')) >= -1
+						BEGIN
+							DEALLOCATE DI_cursor;
+						END
+					
+					DECLARE DI_cursor CURSOR LOCAL FOR						
+						SELECT script
+						FROM @colConstraints;
+					
+					OPEN DI_cursor;
+					
+					FETCH NEXT FROM DI_cursor INTO @sqlScript;
+					
+					WHILE (@@FETCH_STATUS = 0)
+						BEGIN
+							EXEC(@sqlScript);
+							
+							FETCH NEXT FROM DI_cursor INTO @sqlScript;
+						END
+					
+					CLOSE DI_cursor;
+					
+					IF (SELECT CURSOR_STATUS('global','DI_cursor')) >= -1
+						BEGIN
+							DEALLOCATE DI_cursor;
+						END
+					
+					COMMIT TRANSACTION
+					
+					SET @message = 'Column Constraints created successfully on ' + @toSchemaName + '.' + @toTableName;
+				END TRY
+				BEGIN CATCH
+					ROLLBACK TRANSACTION
+					SET @continue = 0;
+					SET @message  = '(1)SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+				END CATCH
+			END
+		ELSE IF(@continue = 1 AND @columnConstraints = 1)
+			BEGIN
+				SET @continue = 1;
+				SET @message  = 'The table (' + @toSchemaName + '.' + @toTableName + ') has the same column Constraints as (' + @fromSchemaName + '.' + @fromTableName + ')';
+			END
+		
 		
 	--GET INDEX SCRIPTS
 		IF(@continue = 1)
@@ -297,7 +409,7 @@ BEGIN
 				BEGIN CATCH
 					ROLLBACK TRANSACTION
 					SET @continue = 0;
-					SET @message  = 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+					SET @message  = '(2)SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 				END CATCH
 			END
 		ELSE IF(@continue = 1)
