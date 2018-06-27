@@ -141,7 +141,7 @@ BEGIN
 											,aaaa.tableName
 											,aaaa.defaultValue
 											,aaaa.columnName
-											,aaaa.schemaName + '_' + aaaa.tableName + '_' + aaaa.columnName + '_' + CONVERT(VARCHAR(5),aaaa.constraintNumber) AS constraintName
+											,'DF_' + aaaa.schemaName + '_' + aaaa.tableName + '_' + aaaa.columnName + '_' + CONVERT(VARCHAR(5),aaaa.constraintNumber) AS constraintName
 										FROM
 											(
 												SELECT
