@@ -133,7 +133,7 @@ BEGIN
 							
 							DECLARE DI_cursor CURSOR LOCAL FOR						
 								SELECT
-									'ALTER TABLE [' + aaaaa.schemaName + '].[' + aaaaa.tableName + '] ADD CONSTRAINT [' + aaaaa.constraintName + '] DEFAULT ' + aaaaa.defaultValue + ' FOR [' + aaaaa.columnName + '];' AS script 
+									'ALTER TABLE [' + aaaaa.schemaName + '].[' + aaaaa.tableName + '] ADD CONSTRAINT [' + aaaaa.constraintName + '] DEFAULT (' + aaaaa.defaultValue + ') FOR [' + aaaaa.columnName + '];' AS script 
 								FROM
 									(
 										SELECT
@@ -164,10 +164,10 @@ BEGIN
 														FROM
 															(
 																SELECT 
-																	 d.name                                       AS constraintName
-																	,REPLACE(REPLACE(d.definition,'(',''),')','') AS defaultValue
-																	,c.name                                       AS columnName
-																	,d.object_id                                  AS defaultObjId
+																	 d.name       AS constraintName
+																	,d.definition AS defaultValue
+																	,c.name       AS columnName
+																	,d.object_id  AS defaultObjId
 																FROM 
 																	sys.objects a INNER JOIN sys.schemas b ON
 																		b.[schema_id] = a.[schema_id]
