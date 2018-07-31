@@ -11,11 +11,6 @@ CREATE PROCEDURE dbo.sp_homogeniseObjectStructure
 		,@SQL                            VARCHAR(4000) OUTPUT
 	)
 AS
-/*
-  Developed by: Mauricio Rivera Senior
-  Description: The following SP takes the structure of the object specified on @objectFrom and compares it with @objectTo.
-  Then, according to the flags on the parameters, the @objectTo structure will be altered to looks like the @objectFrom.
-*/
 BEGIN
 	DECLARE 
 		 @continue         TINYINT       = 1
