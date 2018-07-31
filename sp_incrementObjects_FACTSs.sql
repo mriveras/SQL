@@ -84,40 +84,42 @@ BEGIN
 	
 	DECLARE
 	--PROCESS FLOW VARIABLES
-		 @continue            TINYINT            = 1
-		,@sqlScript          NVARCHAR(MAX)       = N''
-		,@INT                 INT                = 0
-		,@NVARCHAR            NVARCHAR(1000)     = N''
+		 @continue                  TINYINT        = 1
+		,@sqlScript                 NVARCHAR(MAX)  = N''
+		,@INT                       INT            = 0
+		,@NVARCHAR                  NVARCHAR(1000) = N''
 	--LOGGING VARIABLES
-		,@executionID         BIGINT             = NEXT VALUE FOR dbo.sq_BI_log_executionID
-		,@execObjectName      VARCHAR(256)       = 'dbo.sp_incrementObjects_FACTSs'
-		,@scriptCode          VARCHAR(25)        = ''
-		,@status              VARCHAR(50)        = ''
-		,@logTreeLevel        TINYINT            = 0
-		,@logSpaceTree        NVARCHAR(5)        = '    '
-		,@message             VARCHAR(500)       = ''
-		,@SQL                 VARCHAR(4000)      = ''
-		,@variables           VARCHAR(2500)      = ''
+		,@executionID               BIGINT         = NEXT VALUE FOR dbo.sq_BI_log_executionID
+		,@execObjectName            VARCHAR(256)   = 'dbo.sp_incrementObjects_FACTSs'
+		,@scriptCode                VARCHAR(25)    = ''
+		,@status                    VARCHAR(50)    = ''
+		,@logTreeLevel              TINYINT        = 0
+		,@logSpaceTree              NVARCHAR(5)    = '    '
+		,@message                   VARCHAR(500)   = ''
+		,@SQL                       VARCHAR(4000)  = ''
+		,@variables                 VARCHAR(2500)  = ''
 	--FLAGS VARIABLES
-		,@FactHash            TINYINT            = 0
-		,@changesFound        TINYINT            = 0
-		,@dateColumnSpecified TINYINT            = 0
-		,@dateColumnIsNumeric TINYINT            = 0
-		,@factHashIsNew       TINYINT            = 0
-		,@reloadProcess             BIT          = 0
+		,@FactHash                  TINYINT        = 0
+		,@changesFound              TINYINT        = 0
+		,@dateColumnSpecified       TINYINT        = 0
+		,@dateColumnIsNumeric       TINYINT        = 0
+		,@factHashIsNew             TINYINT        = 0
+		,@reloadProcess             BIT            = 0
 	--GENERAL VARIABLES
-		,@dimHashIndexFull    NVARCHAR(256)      = N''
-		,@fromObjectFull      NVARCHAR(256)      = N''
-		,@fromTempObject      NVARCHAR(128)      = N''
-		,@fromTempObjectFull  NVARCHAR(256)      = N''
-		,@toObjectFull        NVARCHAR(256)      = N''
-		,@excludedColumns     NVARCHAR(256)      = N'ProcessExecutionID,LoadDateTime,BookCalendarSKey,DepartureSKey'
-		,@HIDateColumn        NVARCHAR(128)      = N''
-		,@HIHashColumn        NVARCHAR(128)      = N''
-		,@HITimeType          NVARCHAR(15)       = N''
-		,@HITimeUnits         NVARCHAR(10)       = N''
-		,@asAtDateProcessed         DATETIME     = GETDATE()
-		,@asAtDateProcessed_varchar NVARCHAR(50) = N'';
+		,@dimHashIndexFull          NVARCHAR(256)  = N''
+		,@fromObjectFull            NVARCHAR(256)  = N''
+		,@fromTempObject            NVARCHAR(128)  = N''
+		,@fromTempObjectFull        NVARCHAR(256)  = N''
+		,@toObjectFull              NVARCHAR(256)  = N''
+		,@excludedColumns           NVARCHAR(256)  = N'ProcessExecutionID,LoadDateTime,BookCalendarSKey,DepartureSKey'
+		,@HIDateColumn              NVARCHAR(128)  = N''
+		,@HIHashColumn              NVARCHAR(128)  = N''
+		,@HITimeType                NVARCHAR(15)   = N''
+		,@HITimeUnits               NVARCHAR(10)   = N''
+		,@asAtDateProcessed         DATETIME       = GETDATE()
+		,@asAtDateProcessed_varchar NVARCHAR(50)   = N''
+		,@asAtDateFormated          INT            = 0
+		,@asAtDateFormated_varchar  NVARCHAR(10)   = N'';
 	
 	--INITIALIZING VARIABLES
 		SET @dimHashIndexFull    = @dimHashIndex_schema + N'.' + @dimHashIndex_name;
@@ -125,7 +127,7 @@ BEGIN
 		SET @fromTempObject      = @fact_name           + N'_TMP';
 		SET @fromTempObjectFull  = @fact_schema         + N'.' + @fact_name + N'_TMP';
 		SET @toObjectFull        = @factHash_schema     + N'.' + @factHash_name;
-	
+		
 	--VARIABLES FOR LOGGING
 		SET @variables = ' | @fact_schema = '         + ISNULL(CAST(@fact_schema         AS VARCHAR(128)),'') + 
 						 ' | @fact_name = '           + ISNULL(CAST(@fact_name           AS VARCHAR(128)),'') + 
@@ -163,7 +165,7 @@ BEGIN
 	   		- THE FORMAT FOR THE VALUE OF THIS COLUMNS VALUE1 IS EG '31 Dec 9999 11:59:59 PM'
 	 ***********************************************************************************************************************************************
 	-------------------------------------------------------------------------------------------------------------------------------------------------*/
-		SET @reloadProcess = (SELECT value1 FROM dbo.BIConfig WHERE type = 'REPROCESS-DATE-FACT');
+		SET @reloadProcess = (SELECT dbo.udf_getBIConfigParameter('REPROCESS-DATE-FACT',1));
 	/*-----------------------------------------------------------------------------------------------------------------------------------------------
 	 ***********************************************************************************************************************************************
 	 ***********************************************************************************************************************************************
@@ -267,11 +269,8 @@ BEGIN
 						END 
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					BEGIN TRY
-						SET @asAtDateProcessed = (
-							SELECT CONVERT(DATETIME,a.value2)
-							FROM dbo.BIConfig a
-							WHERE a.type = 'REPROCESS-DATE-FACT'
-						)
+						SET @asAtDateProcessed = (SELECT CONVERT(DATETIME,dbo.udf_getBIConfigParameter('REPROCESS-DATE-FACT',2)));
+						SET @asAtDateFormated  = CONVERT(INT,CONVERT(VARCHAR(8),@asAtDateProcessed,112));
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 							IF(@debug = 1)
 								BEGIN
@@ -329,6 +328,7 @@ BEGIN
 		IF(@continue = 1)
 			BEGIN
 				SET @asAtDateProcessed_varchar = CONVERT(VARCHAR(50),@asAtDateProcessed,100);
+				SET @asAtDateFormated_varchar  = CONVERT(VARCHAR(10),@asAtDateFormated);
 			END 
 	
 	----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -613,8 +613,8 @@ BEGIN
 						END
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					
-					SET @sqlScript = 'SELECT @INTint = COUNT(*) FROM ' + @dimHashIndexFull + ' a WHERE a.AsAtCalendarSKey = CAST(CONVERT(VARCHAR(8),GETDATE(),112) AS INT)';
-		  			
+					SET @sqlScript = 'SELECT @INTint = COUNT(*) FROM ' + @dimHashIndexFull + ' a WHERE a.AsAtCalendarSKey = CONVERT(INT,' + @asAtDateFormated_varchar + ')';
+		  			--SET @sqlScript = 'SELECT @INTint = COUNT(*) FROM ' + @dimHashIndexFull + ' a WHERE a.AsAtCalendarSKey = CONVERT(INT,(CONVERT(VARCHAR(8),CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + '''),112)))';
 		  			----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
 							BEGIN
@@ -642,7 +642,7 @@ BEGIN
 									BEGIN
 										SET @logTreeLevel = 3;
 										SET @scriptCode   = '';
-										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'No previous execution detected on the date ' + CONVERT(VARCHAR(8),GETDATE(),112);
+										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'No previous execution detected on the date ' + @asAtDateProcessed_varchar;
 										SET @status       = 'Information';
 										SET @SQL          = '';
 										IF(@loggingType IN (1,3))
@@ -695,8 +695,8 @@ BEGIN
 											END
 									----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 									BEGIN TRY
-										SET @sqlScript = 'DELETE FROM ' + @dimHashIndexFull + ' WHERE AsAtCalendarSKey = CAST(CONVERT(VARCHAR(8),GETDATE(),112) AS INT)';
-										
+										SET @sqlScript = 'DELETE FROM ' + @dimHashIndexFull + ' WHERE AsAtCalendarSKey = CONVERT(INT,' + @asAtDateFormated_varchar + ')';
+										--SET @sqlScript = 'DELETE FROM ' + @dimHashIndexFull + ' WHERE AsAtCalendarSKey = CONVERT(INT,CONVERT(VARCHAR(8),CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + '''),112))';
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 											IF(@debug = 1)
 												BEGIN
@@ -1160,13 +1160,13 @@ BEGIN
 								IF(@dateColumnIsNumeric = 1)
 									BEGIN
 										SET @sqlScript = @sqlScript + N'LEN(a1.' + @dateColumn + ') = 8 ' 
-										SET @sqlScript = @sqlScript + N'AND a1.' + @dateColumn + ' >= CONVERT(INT,CONVERT(VARCHAR(8),DATEADD(MONTH,' + @monthsBack + ',CONVERT(DATETIME,CONVERT(VARCHAR(8),GETDATE(),112))),112)) '
-										--CONVERT(INT,CONVERT(VARCHAR(8),DATEADD(MONTH,-12,CONVERT(DATETIME,CONVERT(VARCHAR(8),CONVERT(DATETIME,@BIBeginDate_varchar),112))),112))												
+										SET @sqlScript = @sqlScript + N'AND a1.' + @dateColumn + ' >= CONVERT(INT,CONVERT(VARCHAR(8),DATEADD(MONTH,' + @monthsBack + ',CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + ''')),112)) '
+										--CONVERT(INT,CONVERT(VARCHAR(8),DATEADD(MONTH,' + @monthsBack + ',CONVERT(DATETIME,CONVERT(VARCHAR(8),GETDATE(),112))),112))											
 									END
 								ELSE
 									BEGIN
-										SET @sqlScript = @sqlScript + N'a1.' + @dateColumn + ' >= DATEADD(MONTH,' + @monthsBack + ',CONVERT(DATETIME,CONVERT(VARCHAR(8),GETDATE(),112)))
-) ';
+										SET @sqlScript = @sqlScript + N'a1.' + @dateColumn + ' >= DATEADD(MONTH,' + @monthsBack + ',CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + '''))
+) ';						
 									END
 							END
 					
@@ -2623,7 +2623,7 @@ BEGIN
 										
 										SET @sqlScript = N'SELECT 
 																DISTINCT 
-																CAST(CONVERT(VARCHAR(8),GETDATE(),112) AS INT) AS [AsAtCalendarSKey]
+																CONVERT(INT,' + @asAtDateFormated_varchar + ') AS [AsAtCalendarSKey]
 																,BI_HFR ';
 																
 										WHILE (@@FETCH_STATUS = 0)
@@ -2763,7 +2763,7 @@ BEGIN
 											ELSE
 												BEGIN
 												--Date Column specified. Incremental process
-													SET @sqlScript =  N'SELECT a.* INTO ##DHI_YesterdayUnchanged FROM ' + @dimHashIndexFull + N' a INNER JOIN ' + @toObjectFull + N' b ON b.BI_HFR = a.BI_HFR WHERE a.AsAtCalendarSKey = ( SELECT MAX(aa.AsAtCalendarSKey) FROM ' + @dimHashIndexFull + N' aa WHERE aa.AsAtCalendarSKey <= CAST(CONVERT(VARCHAR(8),DATEADD(DAY,-1,GETDATE()),112) AS INT) ) AND b.' + @dateColumn + N' < CAST(CONVERT(VARCHAR(8),DATEADD(MONTH,' + @monthsBack + N',GETDATE()),112) AS INT)';
+													SET @sqlScript =  N'SELECT a.* INTO ##DHI_YesterdayUnchanged FROM ' + @dimHashIndexFull + N' a INNER JOIN ' + @toObjectFull + N' b ON b.BI_HFR = a.BI_HFR WHERE a.AsAtCalendarSKey = ( SELECT MAX(aa.AsAtCalendarSKey) FROM ' + @dimHashIndexFull + N' aa WHERE aa.AsAtCalendarSKey <= CONVERT(INT,CONVERT(VARCHAR(8),DATEADD(DAY,-1,CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + ''')),112)) ) AND b.' + @dateColumn + N' < CONVERT(INT,CONVERT(VARCHAR(8),DATEADD(MONTH,' + @monthsBack + N',CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + ''')),112))';
 												END
 													
 											----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -2886,7 +2886,7 @@ BEGIN
 											IF(OBJECT_ID('tempdb..##DHI_today') IS NOT NULL)
 												DROP TABLE ##DHI_today;
 											
-											SET @sqlScript =  N'SELECT DISTINCT CAST(CONVERT(VARCHAR(8),GETDATE(),112) AS INT) AS AsAtCalendarSKey, BI_HFR INTO ##DHI_today FROM ' + @fromTempObjectFull;
+											SET @sqlScript =  N'SELECT DISTINCT CONVERT(INT,' + @asAtDateFormated_varchar + ') AS AsAtCalendarSKey, BI_HFR INTO ##DHI_today FROM ' + @fromTempObjectFull;
 													
 											----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 												IF(@debug = 1)
@@ -3388,7 +3388,7 @@ BEGIN
 															BEGIN TRY																	
 																FETCH FIRST FROM asAtDateCursor INTO @HIDateColumn,@HIHashColumn,@HITimeType,@HITimeUnits;
 																
-																SET @sqlScript = N'SELECT CAST(CONVERT(VARCHAR(8),GETDATE(),112) AS INT) AS AsAtCalendarSKey,a.BI_HFR';
+																SET @sqlScript = N'SELECT CONVERT(INT,' + @asAtDateFormated_varchar + ') AS AsAtCalendarSKey,a.BI_HFR';
 																
 																SET @INT = 0;
 																WHILE (@@FETCH_STATUS = 0)
@@ -3409,7 +3409,7 @@ BEGIN
 																	BEGIN
 																		SET @INT = @INT + 1;
 																		SET @NVARCHAR = CONVERT(NVARCHAR(3),@INT);
-																		SET @sqlScript = @sqlScript + N' FULL OUTER JOIN (SELECT d' + @NVARCHAR + N'.AsAtCalendarSKey AS ' + @HIDateColumn + N',d' + @NVARCHAR + N'.BI_HFR AS ' + @HIHashColumn + N' FROM ' + @dimHashIndexFull + N' d' + @NVARCHAR + N' WHERE d' + @NVARCHAR + N'.AsAtCalendarSKey = CONVERT(VARCHAR(8),DATEADD(' + @HITimeType + N',' + @HITimeUnits + N',GETDATE()),112)) a' + @NVARCHAR + N' ON a' + @NVARCHAR + N'.' + @HIHashColumn + ' = a.BI_HFR';
+																		SET @sqlScript = @sqlScript + N' FULL OUTER JOIN (SELECT d' + @NVARCHAR + N'.AsAtCalendarSKey AS ' + @HIDateColumn + N',d' + @NVARCHAR + N'.BI_HFR AS ' + @HIHashColumn + N' FROM ' + @dimHashIndexFull + N' d' + @NVARCHAR + N' WHERE d' + @NVARCHAR + N'.AsAtCalendarSKey = CONVERT(VARCHAR(8),DATEADD(' + @HITimeType + N',' + @HITimeUnits + N',CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + ''')),112)) a' + @NVARCHAR + N' ON a' + @NVARCHAR + N'.' + @HIHashColumn + ' = a.BI_HFR';
 																		FETCH NEXT FROM asAtDateCursor INTO @HIDateColumn,@HIHashColumn,@HITimeType,@HITimeUnits;
 																	END
 																
@@ -3691,7 +3691,7 @@ BEGIN
 													END
 											----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 											
-											SET @sqlScript = N'SELECT DISTINCT @exist = COUNT(*) FROM ' + @dimHashIndexFull + N' WHERE AsAtCalendarSKey = CAST(CONVERT(VARCHAR(8),GETDATE(),112) AS INT)';
+											SET @sqlScript = N'SELECT DISTINCT @exist = COUNT(*) FROM ' + @dimHashIndexFull + N' WHERE AsAtCalendarSKey = CONVERT(INT,' + @asAtDateFormated_varchar + ')';
 											
 											----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 												IF(@debug = 1)
@@ -3733,7 +3733,7 @@ BEGIN
 															END
 													----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 													
-													SET @sqlScript = 'DELETE FROM ' + @dimHashIndexFull + ' WHERE AsAtCalendarSKey = CAST(CONVERT(VARCHAR(8),GETDATE(),112) AS INT)';
+													SET @sqlScript = 'DELETE FROM ' + @dimHashIndexFull + ' WHERE AsAtCalendarSKey = CONVERT(INT,' + @asAtDateFormated_varchar + ')';
 													
 													----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 														IF(@debug = 1)
@@ -4283,7 +4283,17 @@ BEGIN
 	--Inserting Log into the physical table
 		IF(@loggingType IN (1,3))
 			BEGIN
-				INSERT INTO dbo.BI_log
+				INSERT INTO dbo.BI_log (
+					 executionID
+					,sequenceID
+					,logDateTime
+					,object 
+					,scriptCode 
+					,status 
+					,message 
+					,SQL 
+					,variables 
+				)
 					SELECT * FROM @BI_log;
 			END
 			
