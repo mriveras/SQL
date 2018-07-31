@@ -122,7 +122,7 @@ BEGIN
 	   		- THE FORMAT FOR THE VALUE OF THIS COLUMNS VALUE1 IS EG '31 Dec 9999 11:59:59 PM'
 	 ***********************************************************************************************************************************************
 	-------------------------------------------------------------------------------------------------------------------------------------------------*/
-		SET @reloadProcess = (SELECT value1 FROM dbo.BIConfig WHERE type = 'REPROCESS-DATE-SOURCE');
+		SET @reloadProcess = (SELECT dbo.udf_getBIConfigParameter('REPROCESS-DATE-SOURCE',1));
 	/*-----------------------------------------------------------------------------------------------------------------------------------------------
 	 ***********************************************************************************************************************************************
 	 ***********************************************************************************************************************************************
@@ -219,11 +219,7 @@ BEGIN
 						END 
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					BEGIN TRY
-						SET @asAtDateProcessed = (
-							SELECT CONVERT(DATETIME,a.value2)
-							FROM dbo.BIConfig a
-							WHERE a.type = 'REPROCESS-DATE-SOURCE'
-						)
+						SET @asAtDateProcessed = (SELECT CONVERT(DATETIME,dbo.udf_getBIConfigParameter('REPROCESS-DATE-SOURCE',2)))
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 							IF(@debug = 1)
 								BEGIN
@@ -1168,7 +1164,7 @@ BEGIN
 						END
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 				BEGIN TRY
-					SET @sqlScript = N'SELECT *, ''' + @asAtDateProcessed_varchar + ''' AS ' + @BIBeginDateColumnName + ' INTO ' + @schema + N'.' + @CUR_table + N' FROM ' + @schema + N'.' + @SRC_table + ' (NOLOCK)';
+					SET @sqlScript = N'SELECT *, CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + ''') AS ' + @BIBeginDateColumnName + ' INTO ' + @schema + N'.' + @CUR_table + N' FROM ' + @schema + N'.' + @SRC_table + ' (NOLOCK)';
 					
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
@@ -2596,7 +2592,7 @@ BEGIN
 								
 								SET @sqlScript = @sqlScript +     N'SELECT ';
 								SET @sqlScript = @sqlScript +         @columns;
-								SET @sqlScript = @sqlScript +         N',''' + @asAtDateProcessed_varchar + ''' AS ' + @BIEndDateColumnName + ' ';
+								SET @sqlScript = @sqlScript +         N',CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + ''') AS ' + @BIEndDateColumnName + ' ';
 								SET @sqlScript = @sqlScript +     N'FROM ';
 								SET @sqlScript = @sqlScript +         N'##incrementObjects_changeDelete a INNER JOIN ' + @schema + N'.' + @CUR_table + N' (NOLOCK) b ON ';
 								SET @sqlScript = @sqlScript +             N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
@@ -3021,7 +3017,7 @@ BEGIN
 										--INSERT - 2
 											SET @sqlScript = @sqlScript +     N'SELECT ';
 											SET @sqlScript = @sqlScript +         @columns;
-											SET @sqlScript = @sqlScript +         N',''' + @asAtDateProcessed_varchar + ''' AS ' + @BIBeginDateColumnName + ' ';
+											SET @sqlScript = @sqlScript +         N',CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + ''') AS ' + @BIBeginDateColumnName + ' ';
 											SET @sqlScript = @sqlScript +     N'FROM ';
 											SET @sqlScript = @sqlScript +         N'##incrementObjects_new a INNER JOIN ' + @schema + N'.' + @SRC_table + N' (NOLOCK) b ON ';
 											SET @sqlScript = @sqlScript +             N'b.' + @BIHashColumnName + ' = a.' + @BIHashColumnName + ' ';
@@ -3427,7 +3423,17 @@ BEGIN
 	--Inserting Log into the physical table
 		IF(@loggingType IN (1,3))
 			BEGIN
-				INSERT INTO dbo.BI_log
+				INSERT INTO dbo.BI_log (
+					 executionID
+					,sequenceID
+					,logDateTime
+					,object 
+					,scriptCode 
+					,status 
+					,message 
+					,SQL 
+					,variables 
+				)
 					SELECT * FROM @BI_log;
 			END
 			
