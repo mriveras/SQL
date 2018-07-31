@@ -1,15 +1,10 @@
 CREATE PROCEDURE [dbo].[sp_recompileObjects] 
 (
-	 @schema     NVARCHAR(128)
-	,@objectName NVARCHAR(128)
-	,@objectType CHAR(2)
+	 @schema     NVARCHAR(128) = N''
+	,@objectName NVARCHAR(128) = N''
+	,@objectType CHAR(2)       = ''
 )
 AS
-/*
-  Developer: Mauricio Rivera Senior
-  Description: This SP recompiles all Views and Stored Procedures in a database.
-  This process is advantageous if the INFORMATION_SCHEMA objects of the DB are not updated, and we need to update it quickly. 
-*/
 BEGIN
 	DECLARE
 		 @continue SMALLINT
@@ -184,3 +179,4 @@ BEGIN
 			SELECT @errorMessage AS executionMessage;
 		END
 END
+GO
