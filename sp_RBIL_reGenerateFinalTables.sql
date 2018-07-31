@@ -126,7 +126,6 @@ BEGIN
 	--LOGGING VARIABLES
 		,@executionID               BIGINT        = NEXT VALUE FOR dbo.sq_BI_log_executionID
 		,@execObjectName            VARCHAR(256)  = 'dbo.sp_RBIL_reGenerateFinalTables'
-		,@executingObject           VARCHAR(256)  = ''
 		,@scriptCode                VARCHAR(25)   = ''
 		,@status                    VARCHAR(50)   = ''
 		,@logTreeLevel              TINYINT       = 0
@@ -141,6 +140,7 @@ BEGIN
 		,@asAtDateProcessed         DATETIME      = ''
 		,@asAtDateProcessed_varchar NVARCHAR(50)  = N''
 		,@DGGroup                   VARCHAR(100)  = ''
+		,@executingObject           VARCHAR(256)  = ''
 	--CURSOR VARIABLES
 		,@C_finalTableObjectId      INT           = 0
 		,@C_finalTableSchema        NVARCHAR(128) = N''
