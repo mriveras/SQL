@@ -124,7 +124,7 @@ BEGIN
 	   		- THE FORMAT FOR THE VALUE OF THIS COLUMNS VALUE1 IS EG '31 Dec 9999 11:59:59 PM'
 	 ***********************************************************************************************************************************************
 	-------------------------------------------------------------------------------------------------------------------------------------------------*/
-		SET @reloadProcess = (SELECT value1 FROM dbo.BIConfig WHERE type = 'REPROCESS-DATE-DIM');
+		SET @reloadProcess = (SELECT dbo.udf_getBIConfigParameter('REPROCESS-DATE-DIM',1));
 	/*-----------------------------------------------------------------------------------------------------------------------------------------------
 	 ***********************************************************************************************************************************************
 	 ***********************************************************************************************************************************************
@@ -235,11 +235,7 @@ BEGIN
 						END 
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 					BEGIN TRY
-						SET @asAtDateProcessed = (
-							SELECT CONVERT(DATETIME,a.value1)
-							FROM dbo.BIConfig a
-							WHERE a.type = 'REPROCESS-DATE-DIM'
-						)
+						SET @asAtDateProcessed = (SELECT CONVERT(DATETIME,dbo.udf_getBIConfigParameter('REPROCESS-DATE-DIM',2)));
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 							IF(@debug = 1)
 								BEGIN
@@ -505,7 +501,7 @@ BEGIN
 					ELSE
 						BEGIN
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-								IF(@debug = 1)
+								IF(@debug = 1)--MAURICIO 2
 									BEGIN
 										SET @logTreeLevel = 3;
 										SET @scriptCode   = '';
@@ -1062,7 +1058,7 @@ BEGIN
 						END
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 				BEGIN TRY
-					SET @sqlScript = N'SELECT *, ''' + @asAtDateProcessed_varchar + ''' AS BI_beginDate, CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') AS BI_endDate INTO ' + @dimHashFullObject + N' FROM ' + @tempHashV1FullObject;
+					SET @sqlScript = N'SELECT *, CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + ''') AS BI_beginDate, CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') AS BI_endDate INTO ' + @dimHashFullObject + N' FROM ' + @tempHashV1FullObject;
 					
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
@@ -1499,7 +1495,7 @@ BEGIN
 					IF(@continue = 1)
 						BEGIN
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-								IF(@debug = 1)
+								IF(@debug = 1)--MAURICIO 1
 									BEGIN
 										SET @logTreeLevel = 3;
 										SET @scriptCode   = '';
@@ -1619,7 +1615,7 @@ BEGIN
 					IF(@continue = 1)
 						BEGIN
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-								IF(@debug = 1)
+								IF(@debug = 1) --MAURICIO 3
 									BEGIN
 										SET @logTreeLevel = 3;
 										SET @scriptCode   = '';
@@ -1739,7 +1735,7 @@ BEGIN
 					IF(@continue = 1)
 						BEGIN
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-								IF(@debug = 1)
+								IF(@debug = 1)--MAURICIO 4
 									BEGIN
 										SET @logTreeLevel = 3;
 										SET @scriptCode   = '';
@@ -1859,7 +1855,7 @@ BEGIN
 					IF(@continue = 1)
 						BEGIN
 							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-								IF(@debug = 1)
+								IF(@debug = 1)--MAURICIO 5
 									BEGIN
 										SET @logTreeLevel = 3;
 										SET @scriptCode   = '';
@@ -2037,7 +2033,7 @@ BEGIN
 								ELSE
 									BEGIN
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-											IF(@debug = 1)
+											IF(@debug = 1)--MAURICIO 6
 												BEGIN
 													SET @logTreeLevel = 3;
 													SET @scriptCode   = '';
@@ -2101,7 +2097,7 @@ BEGIN
 								
 							BEGIN TRY
 								SET @sqlScript =               N'UPDATE a ';
-								SET @sqlScript = @sqlScript + N'SET a.BI_endDate = ''' + @asAtDateProcessed_varchar + '''';
+								SET @sqlScript = @sqlScript + N'SET a.BI_endDate = CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + ''')';
 								SET @sqlScript = @sqlScript + N'FROM ' + @dimHashFullObject + N' a INNER JOIN ##incrementObjects_DIM_changeDelete b ON ';
 								SET @sqlScript = @sqlScript + N'b.BI_HFR = a.BI_HFR ';
 								
@@ -2130,7 +2126,7 @@ BEGIN
 								IF(@INT > 0)
 									BEGIN 
 										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-											IF(@debug = 1)
+											IF(@debug = 1)--MAURICIO 7
 												BEGIN
 													SET @logTreeLevel = 3;
 													SET @scriptCode   = '';
@@ -2253,9 +2249,9 @@ BEGIN
 								
 								IF(@INT > 0)
 									BEGIN 
-										IF(@debug = 1)
+										SET @changesFound = 1;
+										IF(@debug = 1)--MAURICIO 8
 											BEGIN
-												SET @changesFound = 1;
 												----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 													SET @logTreeLevel = 3;
 													SET @scriptCode   = '';
@@ -2377,7 +2373,7 @@ BEGIN
 												FOR XML  PATH(''), TYPE
 											).value('.', 'VARCHAR(MAX)'), 1, 1, ''
 										)
-										+ ',''' + @asAtDateProcessed_varchar + ''' AS [BI_beginDate],CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') as [BI_endDate]'
+										+ ',CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + ''') AS [BI_beginDate],CONVERT(DATETIME,''31 Dec 9999 11:59:59 PM'') as [BI_endDate]'
 								);
 									
 								SET @sqlScript = @sqlScript +     N'SELECT ' + @columns
@@ -2408,10 +2404,10 @@ BEGIN
 								SET @INT = @@ROWCOUNT;
 								
 								IF(@INT > 0)
-								BEGIN 
+									BEGIN 
+										SET @changesFound = 1;
 										IF(@debug = 1)
 											BEGIN
-												SET @changesFound = 1;
 												----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 													SET @logTreeLevel = 3;
 													SET @scriptCode   = '';
@@ -2680,7 +2676,17 @@ BEGIN
 	--Inserting Log into the physical table
 		IF(@loggingType IN (1,3))
 			BEGIN
-				INSERT INTO dbo.BI_log
+				INSERT INTO dbo.BI_log (
+					 executionID
+					,sequenceID
+					,logDateTime
+					,object 
+					,scriptCode 
+					,status 
+					,message 
+					,SQL 
+					,variables 
+				)
 					SELECT * FROM @BI_log;
 			END
 	
