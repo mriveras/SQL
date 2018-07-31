@@ -1003,9 +1003,9 @@ FROM ' + @sourceObject + N' a';
 											SET @sqlScript = @sqlScript + 	N'
 WHERE ';
 											SET @sqlScript = @sqlScript +	N'
-	' + @dateColumn + N' >= DATEADD(MONTH,-' + @monthsBack + N',GETDATE())';
+	' + @dateColumn + N' >= DATEADD(MONTH,-' + @monthsBack + N',CONVERT(DATETIME,CONVERT(VARCHAR(8),GETDATE(),112)))';
 										END	
-								
+
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									IF(@debug = 1)
 										BEGIN
@@ -1477,7 +1477,17 @@ WHERE ';
 	--Inserting Log into the physical table
 		IF(@loggingType IN (1,3))
 			BEGIN
-				INSERT INTO dbo.BI_log
+				INSERT INTO dbo.BI_log (
+					 executionID
+					,sequenceID
+					,logDateTime
+					,object 
+					,scriptCode 
+					,status 
+					,message 
+					,SQL 
+					,variables 
+				)
 					SELECT * FROM @BI_log;
 			END
 	
