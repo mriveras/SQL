@@ -12,7 +12,7 @@ AS
 		
 		
 	LAST USED LOGGING IDS:
-		- ERRORS      (COD-700E)
+		- ERRORS      (COD-1100E)
 		- INFORMATION (COD-200I)
 */
 BEGIN
@@ -496,7 +496,7 @@ BEGIN
 							BEGIN
 								SET @logTreeLevel = 3;
 								SET @scriptCode   = '';
-								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'A new AsAtDate been detected. Proceeding to generate a new list of objects to rebuild.';
+								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'A new AsAtDate been detected. Proceeding to generate a new list of objects to rebuild';
 								SET @status       = 'Information';
 								SET @SQL          = '';
 								IF(@loggingType IN (1,3))
@@ -959,49 +959,10 @@ BEGIN
 										BEGIN
 											SET @continue = 0;
 											----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-												IF(@debug = 1)
-													BEGIN
-														SET @logTreeLevel = 3;
-														SET @scriptCode   = '';
-														SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Final Table ' + @C_finalTableSchema + '.' + @C_finalTableName + ' Rebuilt Fail';
-														SET @status       = 'Information';
-														SET @SQL          = '';
-														IF(@loggingType IN (1,3))
-															BEGIN
-																INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
-																VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
-															END
-														IF(@loggingType IN (2,3))
-														   	RAISERROR(@message,10,1);
-													END 
-											----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-											----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-												IF(@debug = 1)
-													BEGIN
-														SET @logTreeLevel = 3;
-														SET @scriptCode   = '';
-														SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @messageExt;
-														SET @status       = 'Information';
-														IF(@loggingType IN (1,3))
-															BEGIN
-																INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,SQL2,SQL3,variables)
-																VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@SQLExt,@SQLExt2,@SQLExt3,@variables);
-															END
-														IF(@loggingType IN (2,3))
-														   	RAISERROR(@message,10,1);
-													END 
-											----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-										END
-								END TRY
-								BEGIN CATCH
-									SET @continue = 0;
-									----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-										IF(@debug = 1)
-											BEGIN
 												SET @logTreeLevel = 3;
-												SET @scriptCode   = '';
+												SET @scriptCode   = 'COD-800E';
 												SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Final Table ' + @C_finalTableSchema + '.' + @C_finalTableName + ' Rebuilt Fail';
-												SET @status       = 'Information';
+												SET @status       = 'ERROR';
 												SET @SQL          = '';
 												IF(@loggingType IN (1,3))
 													BEGIN
@@ -1009,24 +970,51 @@ BEGIN
 														VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
 													END
 												IF(@loggingType IN (2,3))
-												   	RAISERROR(@message,10,1);
-											END 
-									----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-									----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-										IF(@debug = 1)
-											BEGIN
+												   	RAISERROR(@message,11,1);
+											----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+											----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 												SET @logTreeLevel = 3;
-												SET @scriptCode   = '';
+												SET @scriptCode   = 'COD-900E';
 												SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @messageExt;
-												SET @status       = 'Information';
+												SET @status       = 'ERROR';
 												IF(@loggingType IN (1,3))
 													BEGIN
 														INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,SQL2,SQL3,variables)
 														VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@SQLExt,@SQLExt2,@SQLExt3,@variables);
 													END
 												IF(@loggingType IN (2,3))
-												   	RAISERROR(@message,10,1);
-											END 
+												   	RAISERROR(@message,11,1);
+											----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+										END
+								END TRY
+								BEGIN CATCH
+									SET @continue = 0;
+									----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+										SET @logTreeLevel = 3;
+										SET @scriptCode   = 'COD-1000E';
+										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Final Table ' + @C_finalTableSchema + '.' + @C_finalTableName + ' Rebuilt Fail';
+										SET @status       = 'ERROR';
+										SET @SQL          = '';
+										IF(@loggingType IN (1,3))
+											BEGIN
+												INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+												VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+											END
+										IF(@loggingType IN (2,3))
+										   	RAISERROR(@message,11,1);
+									----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+									----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+										SET @logTreeLevel = 3;
+										SET @scriptCode   = 'COD-1100E';
+										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + @messageExt;
+										SET @status       = 'ERROR';
+										IF(@loggingType IN (1,3))
+											BEGIN
+												INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,SQL2,SQL3,variables)
+												VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@SQLExt,@SQLExt2,@SQLExt3,@variables);
+											END
+										IF(@loggingType IN (2,3))
+										   	RAISERROR(@message,11,1);
 									----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 								END CATCH
 								IF(@continue = 1)
