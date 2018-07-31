@@ -2,6 +2,7 @@ CREATE PROCEDURE dbo.sp_checkAgentJobs
 	(
 		  @sqlAgentServer      NVARCHAR(128)
 		 ,@jobName             NVARCHAR(128)
+		 ,@jobId               NVARCHAR(100)
 		 ,@checkEveryInSeconds INT
 		 ,@checkWhileStatusIs  VARCHAR(50)
 	)
@@ -16,13 +17,19 @@ BEGIN
 		the specified on @checkWhileStatusIs. The loop of the check will repeats until the status changes. This iterancy will be executed for the specified number on @checkWhileStatusIs which
         if used as seconds. 
         
-        This Stored Procedure is been used by BI, to check in DataGovernor if a process finished.
+        This Stored Procedure is been used by BI, to check in DataGovernor if the Backup process finished.
 */
 	BEGIN TRY
+		IF(@sqlAgentServer IS NULL)
+			SET @sqlAgentServer = N'';
+		IF(@jobName IS NULL)
+			SET @jobName = N'';
+		IF(@jobId IS NULL)
+			SET @jobId = N'';
+		
 		DECLARE 
 			 @continue         SMALLINT
 			,@msg              NVARCHAR(400)
-			,@jobID            NVARCHAR(128)
 			,@continueChecking INT
 			,@currentStatus    INT
 			,@timeFrequency    VARCHAR(10)
@@ -31,13 +38,12 @@ BEGIN
 			
 		SET @continue         = 1;
 		SET @msg              = '';
-		SET @jobID            = '';
 		
 		--CHECK INPUT VARIABLES
-			IF(LEN(RTRIM(LTRIM(COALESCE(@jobName,'')))) = 0)
+			IF(LEN(@jobName) = 0 AND LEN(@jobId) = 0)
 				BEGIN
 					SET @continue = 0;
-					SET @msg      = N'The parameter Job Name is required';
+					SET @msg      = N'One of the parameters (@jobName / @jobId) is required';
 				END
 			ELSE IF(ISNULL(@checkEveryInSeconds,0) <= 0)
 				BEGIN
@@ -91,16 +97,33 @@ BEGIN
 		--CHECKING THE EXISTENCE OF THE JOB
 			IF(@continue = 1)
 				BEGIN
-					--GETTING THE JOBID FROM THE NAME OF THE INPUT PARAMETER jobName
-						SET @sqlScripts = N'SELECT @internalJobID = a.job_id FROM ' + @sqlAgentServer + '.msdb.dbo.sysjobs a WHERE a.name = ''' + @jobName + '''';
-						EXEC sp_executesql @sqlScripts,N'@internalJobID NVARCHAR(128) OUTPUT',@internalJobID = @jobID OUTPUT;
-
-					--IF JOB_ID IS BLANK THE JOB DOES NOT EXISTS
-						IF(RTRIM(LTRIM(ISNULL(@jobID,N''))) = N'')
-							BEGIN
-								SET @continue = 0;
-								SET @msg      = N'The Job does not exists';
-							END 
+					
+					IF(LEN(@jobId) > 0)
+						BEGIN
+							--GETTING THE JOBID FROM THE NAME OF THE INPUT PARAMETER jobName
+								SET @sqlScripts = N'SELECT @internal_int = 1 FROM ' + @sqlAgentServer + '.msdb.dbo.sysjobs a WHERE a.job_id = ''' + @jobId + '''';
+								EXEC sp_executesql @sqlScripts,N'@internalJobID NVARCHAR(128) OUTPUT',@internal_int = @int OUTPUT;
+		
+							--IF JOB_ID IS BLANK THE JOB DOES NOT EXISTS
+								IF(@int != 1)
+									BEGIN
+										SET @continue = 0;
+										SET @msg      = N'The JobId does not exists';
+									END 
+						END
+					ELSE
+						BEGIN
+							--GETTING THE JOBID FROM THE NAME OF THE INPUT PARAMETER jobName
+								SET @sqlScripts = N'SELECT @internalJobID = a.job_id FROM ' + @sqlAgentServer + '.msdb.dbo.sysjobs a WHERE a.name = ''' + @jobName + '''';
+								EXEC sp_executesql @sqlScripts,N'@internalJobID NVARCHAR(128) OUTPUT',@internalJobID = @jobID OUTPUT;
+		
+							--IF JOB_ID IS BLANK THE JOB DOES NOT EXISTS
+								IF(RTRIM(LTRIM(ISNULL(@jobID,N''))) = N'')
+									BEGIN
+										SET @continue = 0;
+										SET @msg      = N'The Job does not exists';
+									END 
+						END
 				END
 	
 			IF(@continue = 1)
