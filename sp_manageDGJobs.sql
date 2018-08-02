@@ -7,11 +7,12 @@ CREATE PROCEDURE [dbo].[sp_manageDGJobs]
 		,@SQL        VARCHAR(4000)    OUTPUT
 	)
 /*
-	Developed by: 
-	Date: 
+	Developed by: Mauricio Rivera
+	Date: 2 Aug 2018
 	
 	MODIFICATIONS
-		
+		USER	DATE		JIRA	DESCRIPTION
+		MR		02/08/2018	BI-508	SP to Execute Jobs in Data Governor
 
 */
 AS
@@ -99,7 +100,7 @@ BEGIN
 			BEGIN
 				IF(UPPER(@DG_jobStatus) = 'EXECUTING')
 					BEGIN
-						SET @message = 'JOB ALREADY EXECUTING'
+						SET @message = UPPER(@DG_jobStatus)
 					END
 				ELSE
 					BEGIN
@@ -141,7 +142,7 @@ BEGIN
 										SET @sqlScript = 'EXEC ' + @DG_serverName + '.' + @DG_databaseName + '.dbo.procETLSQLJobExecute ''' + CONVERT(VARCHAR(100),@agentJobId) + '''';
 										BEGIN TRY
 											EXEC(@sqlScript);
-											SET @message = 'JOB EXCUTING';
+											SET @message = 'EXECUTING';
 										END TRY
 										BEGIN CATCH
 											SET @continue = 0;
@@ -156,7 +157,6 @@ BEGIN
 			BEGIN
 				IF(@DG_jobStatus = 'EXECUTING')
 					BEGIN
-						PRINT('1')
 						SET @sqlScript = 'EXEC ' + @DG_serverName + '.' + @DG_databaseName + '.dbo.procETLSQLJobCancel ''' + CONVERT(VARCHAR(100),@agentJobId) + '''';
 						BEGIN TRY
 							EXEC(@sqlScript);
@@ -190,7 +190,7 @@ BEGIN
 										IF(@agentJobStatus = 'EXECUTING')
 											BEGIN
 												SET @continue = 0;
-												SET @message  = 'Error-04:The process tried to stop the Job two times with an unsuccessful result'
+												SET @message  = 'Error-04: The process tried to stop the Job two times with an unsuccessful result'
 											END
 									END TRY
 									BEGIN CATCH
@@ -207,41 +207,33 @@ BEGIN
 							SET @message  = 'SQL Error-02: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 							SET @SQL      = @sqlScript;
 						END CATCH
-						
-						SET @DG_jobStatus = (
-							SELECT a.ExecutionStatus
-							FROM   dbo.vw_DGJobsByStatus a
-							WHERE  a.agentJobID = @agentJobId
-						);
-						
-						SET @agentJobStatus = (
-							SELECT a.status
-							FROM dbo.vw_agentJobStatus a
-							WHERE a.jobId = @agentJobId
-						);
-						
-						IF(@agentJobStatus = 'CANCELED' AND @DG_jobStatus = 'FAILED')
-							BEGIN
-								SET @message = 'JOB STOPPED'
-							END
-						ELSE IF(@agentJobStatus = 'CANCELED' AND @DG_jobStatus = 'EXECUTING')
-							BEGIN
-								SET @message = 'JOB STOPPED. However, in Data Governor it shows running'
-							END
-						ELSE IF(@agentJobStatus = 'EXECUTING' AND @DG_jobStatus = 'EXECUTING')
-							BEGIN
-								SET @continue = 0;
-								SET @message = 'Error-09: For an unexpected reason, it is not possible to stop the Job';
-							END
-						ELSE IF(@agentJobStatus = 'EXECUTING' AND @DG_jobStatus = 'FAILED')
-							BEGIN
-								SET @continue = 0;
-								SET @message = 'Error-10: For an unexpected reason, the job was stopped in Data Governor but not in the Agent';
-							END
+					END
+					
+				SET @DG_jobStatus = (
+					SELECT a.ExecutionStatus
+					FROM   dbo.vw_DGJobsByStatus a
+					WHERE  a.agentJobID = @agentJobId
+				);
+				
+				SET @agentJobStatus = (
+					SELECT a.status
+					FROM dbo.vw_agentJobStatus a
+					WHERE a.jobId = @agentJobId
+				);
+				
+				IF(@agentJobStatus = 'EXECUTING' AND @DG_jobStatus = 'EXECUTING')
+					BEGIN
+						SET @continue = 0;
+						SET @message = 'Error-09: For an unexpected reason, it is not possible to stop the Job';
+					END
+				ELSE IF(@agentJobStatus = 'EXECUTING' AND @DG_jobStatus = 'FAILED')
+					BEGIN
+						SET @continue = 0;
+						SET @message = 'Error-10: For an unexpected reason, the job was stopped in Data Governor but not in the Agent';
 					END
 				ELSE
 					BEGIN
-						SET @message = 'JOB ALREADY STOPPED'
+						SET @message = @agentJobStatus;
 					END
 			END
 			
@@ -340,16 +332,13 @@ BEGIN
 						IF(@continue = 1)
 							BEGIN
 								COMMIT TRANSACTION;
-								SET @message = 'JOB STOPPED 2';
+								SET @message = 'CANCELLED';
 							END 
 						ELSE
 							BEGIN
 								ROLLBACK TRANSACTION;
 							END
 					END
-				
-				
-				
 			END
 		
 	SET @status = @continue;
