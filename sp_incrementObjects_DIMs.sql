@@ -234,42 +234,42 @@ BEGIN
 							   	RAISERROR(@message,10,1);
 						END 
 				----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-					BEGIN TRY
-						SET @asAtDateProcessed = (SELECT CONVERT(DATETIME,dbo.udf_getBIConfigParameter('REPROCESS-DATE-DIM',2)));
-						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-							IF(@debug = 1)
-								BEGIN
-									SET @logTreeLevel = 3;
-									SET @scriptCode   = '';
-									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'asAtDateProcessed assigned to (' + CONVERT(VARCHAR(50),@asAtDateProcessed,100) + ')';
-									SET @status       = 'Information';
-									SET @SQL          = '';
-									IF(@loggingType IN (1,3))
-										BEGIN
-											INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
-											VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
-										END
-									IF(@loggingType IN (2,3))
-									   	RAISERROR(@message,10,1);
-								END 
-						----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-					END TRY
-					BEGIN CATCH
-						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-							SET @logTreeLevel = 3;
-							SET @scriptCode   = 'COD-100E';
-							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
-							SET @status       = 'ERROR';
-							SET @SQL          = '';
-							IF(@loggingType IN (1,3))
-								BEGIN
-									INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
-									VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
-								END
-							IF(@loggingType IN (2,3))
-							   	RAISERROR(@message,11,1);
-						----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-					END CATCH
+					SET @asAtDateProcessed = (SELECT CONVERT(DATETIME,dbo.udf_getBIConfigParameter('REPROCESS-DATE-DIM',2)));
+					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+						IF(@debug = 1)
+							BEGIN
+								SET @logTreeLevel = 3;
+								SET @scriptCode   = '';
+								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'asAtDateProcessed assigned to (' + CONVERT(VARCHAR(50),@asAtDateProcessed,100) + ')';
+								SET @status       = 'Information';
+								SET @SQL          = '';
+								IF(@loggingType IN (1,3))
+									BEGIN
+										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+										VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+									END
+								IF(@loggingType IN (2,3))
+								   	RAISERROR(@message,10,1);
+							END 
+					----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+					IF(LEN(RTRIM(LTRIM(ISNULL(@asAtDateProcessed,'')))) = 0)
+						BEGIN
+							SET @continue = 0;
+							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+								SET @logTreeLevel = 3;
+								SET @scriptCode   = 'COD-100E';
+								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
+								SET @status       = 'ERROR';
+								SET @SQL          = '';
+								IF(@loggingType IN (1,3))
+									BEGIN
+										INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+										VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+									END
+								IF(@loggingType IN (2,3))
+								   	RAISERROR(@message,11,1);
+							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+						END
 				----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 					IF(@debug = 1)
 						BEGIN
@@ -1953,26 +1953,24 @@ BEGIN
 					IF(@continue = 1)
 						BEGIN
 							SET @changesFound = 0;
-							
+							----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+								IF(@debug = 1)
+									BEGIN
+										SET @logTreeLevel = 3;
+										SET @scriptCode   = '';
+										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Getting changed / deleted rows';
+										SET @status       = 'Information';
+										SET @SQL          = '';
+										IF(@loggingType IN (1,3))
+											BEGIN
+												INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+												VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
+											END
+										IF(@loggingType IN (2,3))
+											RAISERROR(@message,10,1);
+									END
+							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 							BEGIN TRY
-								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-									IF(@debug = 1)
-										BEGIN
-											SET @logTreeLevel = 3;
-											SET @scriptCode   = '';
-											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'Getting changed / deleted rows';
-											SET @status       = 'Information';
-											SET @SQL          = '';
-											IF(@loggingType IN (1,3))
-												BEGIN
-													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
-													VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables);
-												END
-											IF(@loggingType IN (2,3))
-												RAISERROR(@message,10,1);
-										END
-								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-								
 								IF OBJECT_ID ('tempdb..##incrementObjects_DIM_changeDelete') IS NOT NULL
 									DROP TABLE ##incrementObjects_DIM_changeDelete;	
 								
@@ -2094,7 +2092,6 @@ BEGIN
 											RAISERROR(@message,10,1);
 									END
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-								
 							BEGIN TRY
 								SET @sqlScript =               N'UPDATE a ';
 								SET @sqlScript = @sqlScript + N'SET a.BI_endDate = CONVERT(DATETIME,''' + @asAtDateProcessed_varchar + ''')';
@@ -2209,7 +2206,6 @@ BEGIN
 											RAISERROR(@message,10,1);
 									END
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-							
 							BEGIN TRY
 								IF OBJECT_ID ('tempdb..##incrementObjects_DIM_new') IS NOT NULL
 									DROP TABLE ##incrementObjects_DIM_new;	
@@ -2329,7 +2325,6 @@ BEGIN
 											RAISERROR(@message,10,1);
 									END
 							----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-
 							BEGIN TRY
 								--GETTING @dimHashFullObject COLUMNS
 									SET @columns = (
