@@ -177,31 +177,13 @@ BEGIN
 		SET @execObjectName = '';--This variable is set to BLANK because it's not necessary to set the same value in all the log records	
 		SET @variables      = '';--This variable is set to BLANK because it's not necessary to set the same value in all the log records	
 	----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-	
-	----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-		IF(@debug = 1)
-			BEGIN
-				SET @logTreeLevel = 1;
-				SET @scriptCode   = '';
-				SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'BEGIN Transaction';
-				SET @status       = 'Information';
-				SET @SQL          = '';
-				IF(@loggingType IN (1,3))
-					BEGIN
-						INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
-						VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables)
-					END
-				IF(@loggingType IN (2,3))
-					RAISERROR(@message,10,1);
-			END
-	----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-	
+
 	IF(@continue = 1)
 		BEGIN
 			----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 				IF(@debug = 1)
 					BEGIN
-						SET @logTreeLevel = 2;
+						SET @logTreeLevel = 1;
 						SET @scriptCode   = '';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'BEGIN Getting the As At Date';
 						SET @status       = 'Information';
@@ -230,7 +212,7 @@ BEGIN
 					BEGIN
 						SET @continue = 0;
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-							SET @logTreeLevel = 3;
+							SET @logTreeLevel = 2;
 							SET @scriptCode   = 'COD-100E';
 							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'ReBuild Process is not activated. Set (1) column Value1. SELECT value1 FROM dbo.BIconfig WHERE type = ''REBUILD-AS-AT-DATE''';
 							SET @status       = 'ERROR';
@@ -262,7 +244,7 @@ BEGIN
 										BEGIN
 											SET @continue = 0;
 											----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-												SET @logTreeLevel = 3;
+												SET @logTreeLevel = 2;
 												SET @scriptCode   = 'COD-200E';
 												SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The ReBuild Date must not be geather than today date. SELECT value2 FROM dbo.BIconfig WHERE type = ''REBUILD-AS-AT-DATE''';
 												SET @status       = 'ERROR';
@@ -282,7 +264,7 @@ BEGIN
 											----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 												IF(@debug = 1)
 													BEGIN
-														SET @logTreeLevel = 3;
+														SET @logTreeLevel = 2;
 														SET @scriptCode   = '';
 														SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'As At Date assigned (' + CONVERT(VARCHAR(50),@asAtDateProcessed,100) + ')';
 														SET @status       = 'Information';
@@ -301,7 +283,7 @@ BEGIN
 							BEGIN CATCH
 								SET @continue = 0;
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-									SET @logTreeLevel = 3;
+									SET @logTreeLevel = 2;
 									SET @scriptCode   = 'COD-300E';
 									SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 									SET @status       = 'ERROR';
@@ -319,7 +301,7 @@ BEGIN
 			----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 				IF(@debug = 1)
 					BEGIN
-						SET @logTreeLevel = 2;
+						SET @logTreeLevel = 1;
 						SET @scriptCode   = '';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'END Getting the As At Date';
 						SET @status       = 'Information';
@@ -340,7 +322,7 @@ BEGIN
 			----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 				IF(@debug = 1)
 					BEGIN
-						SET @logTreeLevel = 2;
+						SET @logTreeLevel = 1;
 						SET @scriptCode   = '';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'BEGIN Getting the Data Governor Group to ReBuild';
 						SET @status       = 'Information';
@@ -363,7 +345,7 @@ BEGIN
 								BEGIN
 									SET @continue = 0;
 									----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-										SET @logTreeLevel = 3;
+										SET @logTreeLevel = 2;
 										SET @scriptCode   = 'COD-400E';
 										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The Group in the Config Table is not specified. Use SELECT value1 FROM dbo.BIconfig WHERE type = ''REBUILD-DG-GROUP''';
 										SET @status       = 'ERROR';
@@ -387,7 +369,7 @@ BEGIN
 								BEGIN
 									SET @continue = 0;
 									----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-										SET @logTreeLevel = 3;
+										SET @logTreeLevel = 2;
 										SET @scriptCode   = 'COD-500E';
 										SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'The DataGovernor Group specified in the Config Table is not a valid registered Group. Use SELECT value1 FROM dbo.BIconfig WHERE type = ''REBUILD-DG-GROUP''';
 										SET @status       = 'ERROR';
@@ -406,7 +388,7 @@ BEGIN
 									----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 										IF(@debug = 1)
 											BEGIN
-												SET @logTreeLevel = 3;
+												SET @logTreeLevel = 2;
 												SET @scriptCode   = '';
 												SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'As At Date assigned (' + CONVERT(VARCHAR(50),@asAtDateProcessed,100) + ')';
 												SET @status       = 'Information';
@@ -425,7 +407,7 @@ BEGIN
 					BEGIN CATCH
 						SET @continue = 0;
 						----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
-							SET @logTreeLevel = 3;
+							SET @logTreeLevel = 2;
 							SET @scriptCode   = 'COD-600E';
 							SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 							SET @status       = 'ERROR';
@@ -442,7 +424,7 @@ BEGIN
 			----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 				IF(@debug = 1)
 					BEGIN
-						SET @logTreeLevel = 2;
+						SET @logTreeLevel = 1;
 						SET @scriptCode   = '';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'END Getting the Data Governor Group to ReBuild';
 						SET @status       = 'Information';
@@ -463,7 +445,7 @@ BEGIN
 			----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 				IF(@debug = 1)
 					BEGIN
-						SET @logTreeLevel = 2;
+						SET @logTreeLevel = 1;
 						SET @scriptCode   = '';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'BEGIN Getting Objects to Re-Generate';
 						SET @status       = 'Information';
@@ -494,7 +476,7 @@ BEGIN
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
 							BEGIN
-								SET @logTreeLevel = 3;
+								SET @logTreeLevel = 2;
 								SET @scriptCode   = '';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'A new AsAtDate been detected. Proceeding to generate a new list of objects to rebuild';
 								SET @status       = 'Information';
@@ -644,7 +626,7 @@ BEGIN
 					----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 						IF(@debug = 1)
 							BEGIN
-								SET @logTreeLevel = 3;
+								SET @logTreeLevel = 2;
 								SET @scriptCode   = '';
 								SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'New list of objects generated successfully and inserted into the variable @BI_rebuildObjectsLog';
 								SET @status       = 'Information';
@@ -696,7 +678,7 @@ BEGIN
 			----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 				IF(@debug = 1)
 					BEGIN
-						SET @logTreeLevel = 2;
+						SET @logTreeLevel = 1;
 						SET @scriptCode   = '';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'END Getting Objects to Re-Generate';
 						SET @status       = 'Information';
@@ -717,7 +699,7 @@ BEGIN
 			----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 				IF(@debug = 1)
 					BEGIN
-						SET @logTreeLevel = 2;
+						SET @logTreeLevel = 1;
 						SET @scriptCode   = '';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'BEGIN Re-Build Final Tables';
 						SET @status       = 'Information';
@@ -776,7 +758,7 @@ BEGIN
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									IF(@debug = 1)
 										BEGIN
-											SET @logTreeLevel = 3;
+											SET @logTreeLevel = 2;
 											SET @scriptCode   = '';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'BEGIN Renaming Final (' + @C_finalTableSchema + '.' + @C_finalTableName + ') Table to CUR (' + @C_CURSchema + '.' + @C_CURName + ')';
 											SET @status       = 'Information';
@@ -801,7 +783,44 @@ BEGIN
 									AND HSTObjectId        = @C_HSTObjectId
 									AND asAtDate           = @C_asAtDate;
 									
-								BEGIN TRAN
+								UPDATE a
+								SET a.status = b.status
+								FROM
+									dbo.BI_rebuildObjectsLog a INNER JOIN @BI_rebuildObjectsLog b ON 
+										    b.GG_group           = a.GG_group
+										AND b.layer              = a.layer
+										AND b.executingObject    = a.executingObject
+										AND b.finalTableObjectId = a.finalTableObjectId
+										AND b.CURObjectId        = a.CURObjectId
+										AND b.HSTObjectId        = a.HSTObjectId
+										AND b.asAtDate           = a.asAtDate
+								WHERE
+									    a.GG_group           = @DGGroup
+									AND a.layer              = @layer
+									AND a.executingObject    = @executingObject
+									AND a.finalTableObjectId = @C_finalTableObjectId
+									AND a.CURObjectId        = @C_CURObjectId
+									AND a.HSTObjectId        = @C_HSTObjectId
+									AND a.asAtDate           = @C_asAtDate;
+									
+								BEGIN TRANSACTION
+								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+									IF(@debug = 1)
+										BEGIN
+											SET @logTreeLevel = 3;
+											SET @scriptCode   = '';
+											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'BEGIN Transaction';
+											SET @status       = 'Information';
+											SET @SQL          = '';
+											IF(@loggingType IN (1,3))
+												BEGIN
+													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+													VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables)
+												END
+											IF(@loggingType IN (2,3))
+												RAISERROR(@message,10,1);
+										END
+								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 								BEGIN TRY
 									SET @sqlScript = 'EXEC sp_rename ''' + @C_finalTableSchema + '.' + @C_finalTableName + ''',''' + @C_CURName + ''';'
 									----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
@@ -839,11 +858,9 @@ BEGIN
 												   	RAISERROR(@message,10,1);
 											END 
 									----------------------------------------------------- END INSERT LOG -----------------------------------------------------
-									COMMIT TRAN;
 								END TRY
 								BEGIN CATCH
 									SET @continue = 0;
-									ROLLBACK TRAN;
 									UPDATE @BI_rebuildObjectsLog
 									SET status = 'RENAMING ERROR'
 									WHERE 
@@ -854,6 +871,26 @@ BEGIN
 										AND CURObjectId        = @C_CURObjectId
 										AND HSTObjectId        = @C_HSTObjectId
 										AND asAtDate           = @C_asAtDate;
+									
+									UPDATE a
+									SET a.status = b.status
+									FROM
+										dbo.BI_rebuildObjectsLog a INNER JOIN @BI_rebuildObjectsLog b ON 
+											    b.GG_group           = a.GG_group
+											AND b.layer              = a.layer
+											AND b.executingObject    = a.executingObject
+											AND b.finalTableObjectId = a.finalTableObjectId
+											AND b.CURObjectId        = a.CURObjectId
+											AND b.HSTObjectId        = a.HSTObjectId
+											AND b.asAtDate           = a.asAtDate
+									WHERE
+										    a.GG_group           = @DGGroup
+										AND a.layer              = @layer
+										AND a.executingObject    = @executingObject
+										AND a.finalTableObjectId = @C_finalTableObjectId
+										AND a.CURObjectId        = @C_CURObjectId
+										AND a.HSTObjectId        = @C_HSTObjectId
+										AND a.asAtDate           = @C_asAtDate;
 									----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 										SET @logTreeLevel = 4;
 										SET @scriptCode   = 'COD-700E';
@@ -870,10 +907,52 @@ BEGIN
 									----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 								END CATCH
 								
+								IF(@continue = 1)
+									BEGIN
+										COMMIT TRANSACTION;
+										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+											IF(@debug = 1)
+												BEGIN
+													SET @logTreeLevel = 3;
+													SET @scriptCode   = '';
+													SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'COMMIT Transaction';
+													SET @status       = 'Information';
+													SET @SQL          = '';
+													IF(@loggingType IN (1,3))
+														BEGIN
+															INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+															VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables)
+														END
+													IF(@loggingType IN (2,3))
+														RAISERROR(@message,10,1);
+												END
+										----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+									END
+								ELSE
+									BEGIN
+										ROLLBACK TRANSACTION;
+										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+											IF(@debug = 1)
+												BEGIN
+													SET @logTreeLevel = 3;
+													SET @scriptCode   = '';
+													SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'ROLLBACK Transaction';
+													SET @status       = 'Information';
+													SET @SQL          = '';
+													IF(@loggingType IN (1,3))
+														BEGIN
+															INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+															VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables)
+														END
+													IF(@loggingType IN (2,3))
+														RAISERROR(@message,10,1);
+												END
+										----------------------------------------------------- END INSERT LOG -----------------------------------------------------
+									END 
 								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 									IF(@debug = 1)
 										BEGIN
-											SET @logTreeLevel = 3;
+											SET @logTreeLevel = 2;
 											SET @scriptCode   = '';
 											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'END Renaming Final Table to CUR';
 											SET @status       = 'Information';
@@ -901,7 +980,44 @@ BEGIN
 									AND CURObjectId        = @C_CURObjectId
 									AND HSTObjectId        = @C_HSTObjectId
 									AND asAtDate           = @C_asAtDate;
+									
+								UPDATE a
+								SET a.status = b.status
+								FROM
+									dbo.BI_rebuildObjectsLog a INNER JOIN @BI_rebuildObjectsLog b ON 
+										    b.GG_group           = a.GG_group
+										AND b.layer              = a.layer
+										AND b.executingObject    = a.executingObject
+										AND b.finalTableObjectId = a.finalTableObjectId
+										AND b.CURObjectId        = a.CURObjectId
+										AND b.HSTObjectId        = a.HSTObjectId
+										AND b.asAtDate           = a.asAtDate
+								WHERE
+									    a.GG_group           = @DGGroup
+									AND a.layer              = @layer
+									AND a.executingObject    = @executingObject
+									AND a.finalTableObjectId = @C_finalTableObjectId
+									AND a.CURObjectId        = @C_CURObjectId
+									AND a.HSTObjectId        = @C_HSTObjectId
+									AND a.asAtDate           = @C_asAtDate;
 								BEGIN TRANSACTION
+								----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+									IF(@debug = 1)
+										BEGIN
+											SET @logTreeLevel = 2;
+											SET @scriptCode   = '';
+											SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'BEGIN Transaction';
+											SET @status       = 'Information';
+											SET @SQL          = '';
+											IF(@loggingType IN (1,3))
+												BEGIN
+													INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+													VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables)
+												END
+											IF(@loggingType IN (2,3))
+												RAISERROR(@message,10,1);
+										END
+								----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 								BEGIN TRY
 									SET @sqlScript = N'EXEC dbo.sp_RBIL_processFinalTable ''' + @C_CURSchema + ''',''' + @C_CURName + ''',''' + @C_HSTSchema + ''',''' + @C_HSTName + ''',''' + @C_finalTableSchema + ''',''' + @C_finalTableName + ''',''BI_beginDate'',''BI_endDate'',''' + CONVERT(VARCHAR(50),@C_asAtDate,106) + ''',@statusInt OUTPUT, @messageInt OUTPUT, @SQLInt OUTPUT, @SQLInt2 OUTPUT, @SQLInt3 OUTPUT';
 									
@@ -954,6 +1070,26 @@ BEGIN
 												AND CURObjectId        = @C_CURObjectId
 												AND HSTObjectId        = @C_HSTObjectId
 												AND asAtDate           = @C_asAtDate;
+											
+											UPDATE a
+											SET a.status = b.status
+											FROM
+												dbo.BI_rebuildObjectsLog a INNER JOIN @BI_rebuildObjectsLog b ON 
+													    b.GG_group           = a.GG_group
+													AND b.layer              = a.layer
+													AND b.executingObject    = a.executingObject
+													AND b.finalTableObjectId = a.finalTableObjectId
+													AND b.CURObjectId        = a.CURObjectId
+													AND b.HSTObjectId        = a.HSTObjectId
+													AND b.asAtDate           = a.asAtDate
+											WHERE
+												    a.GG_group           = @DGGroup
+												AND a.layer              = @layer
+												AND a.executingObject    = @executingObject
+												AND a.finalTableObjectId = @C_finalTableObjectId
+												AND a.CURObjectId        = @C_CURObjectId
+												AND a.HSTObjectId        = @C_HSTObjectId
+												AND a.asAtDate           = @C_asAtDate;
 										END
 									ELSE
 										BEGIN
@@ -1020,10 +1156,44 @@ BEGIN
 								IF(@continue = 1)
 									BEGIN
 										COMMIT TRANSACTION;
+										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+											IF(@debug = 1)
+												BEGIN
+													SET @logTreeLevel = 2;
+													SET @scriptCode   = '';
+													SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'COMMIT Transaction';
+													SET @status       = 'Information';
+													SET @SQL          = '';
+													IF(@loggingType IN (1,3))
+														BEGIN
+															INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+															VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables)
+														END
+													IF(@loggingType IN (2,3))
+														RAISERROR(@message,10,1);
+												END
+										----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 									END
 								ELSE 
 									BEGIN
 										ROLLBACK TRANSACTION;
+										----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
+											IF(@debug = 1)
+												BEGIN
+													SET @logTreeLevel = 2;
+													SET @scriptCode   = '';
+													SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'ROLLBACK Transaction';
+													SET @status       = 'Information';
+													SET @SQL          = '';
+													IF(@loggingType IN (1,3))
+														BEGIN
+															INSERT INTO @BI_log (executionID,logDateTime,object,scriptCode,status,message,SQL,variables)
+															VALUES (@executionID,GETDATE(),@execObjectName,@scriptCode,@status,@message,@sql,@variables)
+														END
+													IF(@loggingType IN (2,3))
+														RAISERROR(@message,10,1);
+												END
+										----------------------------------------------------- END INSERT LOG -----------------------------------------------------
 									END
 								
 								IF(@continue = 0)
@@ -1038,6 +1208,26 @@ BEGIN
 											AND CURObjectId        = @C_CURObjectId
 											AND HSTObjectId        = @C_HSTObjectId
 											AND asAtDate           = @C_asAtDate;
+										
+										UPDATE a
+										SET a.status = b.status
+										FROM
+											dbo.BI_rebuildObjectsLog a INNER JOIN @BI_rebuildObjectsLog b ON 
+												    b.GG_group           = a.GG_group
+												AND b.layer              = a.layer
+												AND b.executingObject    = a.executingObject
+												AND b.finalTableObjectId = a.finalTableObjectId
+												AND b.CURObjectId        = a.CURObjectId
+												AND b.HSTObjectId        = a.HSTObjectId
+												AND b.asAtDate           = a.asAtDate
+										WHERE
+											    a.GG_group           = @DGGroup
+											AND a.layer              = @layer
+											AND a.executingObject    = @executingObject
+											AND a.finalTableObjectId = @C_finalTableObjectId
+											AND a.CURObjectId        = @C_CURObjectId
+											AND a.HSTObjectId        = @C_HSTObjectId
+											AND a.asAtDate           = @C_asAtDate;
 									END
 							END
 							
@@ -1045,10 +1235,22 @@ BEGIN
 						INTO @C_finalTableObjectId,@C_finalTableSchema,@C_finalTableName,@C_CURObjectId,@C_CURSchema,@C_CURName,@C_HSTObjectId,@C_HSTSchema,@C_HSTName,@C_asAtDate,@C_finalTableIsCUR;	
 					END
 					
+					UPDATE a
+					SET a.status = b.status
+					FROM
+						dbo.BI_rebuildObjectsLog a INNER JOIN @BI_rebuildObjectsLog b ON 
+							    b.GG_group           = a.GG_group
+							AND b.layer              = a.layer
+							AND b.executingObject    = a.executingObject
+							AND b.finalTableObjectId = a.finalTableObjectId
+							AND b.CURObjectId        = a.CURObjectId
+							AND b.HSTObjectId        = a.HSTObjectId
+							AND b.asAtDate           = a.asAtDate;
+									
 			----------------------------------------------------- BEGIN INSERT LOG -----------------------------------------------------
 				IF(@debug = 1)
 					BEGIN
-						SET @logTreeLevel = 2;
+						SET @logTreeLevel = 1;
 						SET @scriptCode   = '';
 						SET @message      = REPLICATE(@logSpaceTree,@logTreeLevel) + 'END Re-Build Final Tables';
 						SET @status       = 'Information';
