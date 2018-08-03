@@ -70,7 +70,7 @@ BEGIN
 			CREATE TABLE dbo.BI_rebuildObjectsLog (
 				 processDateTime      DATETIME       DEFAULT(GETDATE()) NOT NULL
 				,executingObject      VARCHAR  (100)                    NOT NULL
-				,GG_group             VARCHAR  (250)                    NOT NULL
+				,DG_group             VARCHAR  (250)                    NOT NULL
 				,layer                VARCHAR  (50)                     NOT NULL 
 				,finalTableObjectId   INT                                   NULL
 				,finalTableSchema     NVARCHAR (128)                        NULL
@@ -90,14 +90,14 @@ BEGIN
 				,status               VARCHAR  (50)                     NOT NULL
 			);
 			
-			CREATE INDEX NDX_dboBI_rebuildObjectsLog ON dbo.BI_rebuildObjectsLog (executingObject,GG_group,layer);			
+			CREATE INDEX NDX_dboBI_rebuildObjectsLog ON dbo.BI_rebuildObjectsLog (executingObject,DG_group,layer);			
 		END
 	
 	--Declaring User Table Variable for logging the objects to rebuild
 		DECLARE @BI_rebuildObjectsLog TABLE (
 			 processDateTime      DATETIME       DEFAULT(GETDATE()) NOT NULL
 			,executingObject      VARCHAR  (128)                    NOT NULL
-			,GG_group             VARCHAR  (250)                    NOT NULL
+			,DG_group             VARCHAR  (250)                    NOT NULL
 			,layer                VARCHAR  (50)                     NOT NULL
 			,finalTableObjectId   INT                                   NULL
 			,finalTableSchema     NVARCHAR (128)                        NULL
@@ -297,7 +297,7 @@ BEGIN
 						FROM    dbo.BI_rebuildObjectsLog a 
 						WHERE 
 							    a.layer           = @layer
-							AND a.GG_group        = @DG_Group
+							AND a.DG_group        = @DG_Group
 							AND a.executingObject = @executingObject
 							AND a.asAtDate        = @DG_asAtDate
 					)
@@ -325,13 +325,13 @@ BEGIN
 							dbo.BI_rebuildObjectsLog
 						WHERE
 							    layer           = @layer
-							AND GG_group        = @DG_Group
+							AND DG_group        = @DG_Group
 							AND executingObject = @executingObject;
 							
 						
 						INSERT INTO @BI_rebuildObjectsLog (
 							 executingObject
-							,GG_group
+							,DG_group
 							,layer
 							,asAtDate
 							,DG_jobName
@@ -362,9 +362,9 @@ BEGIN
 									)
 								);
 						
-						INSERT INTO dbo.BI_rebuildObjectsLog (executingObject, GG_group, layer, finalTableObjectId, finalTableSchema, finalTableName, CURObjectId, CURSchema, CURName, HSTObjectId, HSTSchema, HSTName, finalTableIsCUR, asAtDate, DG_jobName, DG_jobAgentId, DG_jobExecutionOrder, DG_taskId, status)
+						INSERT INTO dbo.BI_rebuildObjectsLog (executingObject, DG_group, layer, finalTableObjectId, finalTableSchema, finalTableName, CURObjectId, CURSchema, CURName, HSTObjectId, HSTSchema, HSTName, finalTableIsCUR, asAtDate, DG_jobName, DG_jobAgentId, DG_jobExecutionOrder, DG_taskId, status)
 							SELECT
-								executingObject, GG_group, layer, finalTableObjectId, finalTableSchema, finalTableName, CURObjectId, CURSchema, CURName, HSTObjectId, HSTSchema, HSTName, finalTableIsCUR, asAtDate, DG_jobName, DG_jobAgentId, DG_jobExecutionOrder, DG_taskId, status
+								executingObject, DG_group, layer, finalTableObjectId, finalTableSchema, finalTableName, CURObjectId, CURSchema, CURName, HSTObjectId, HSTSchema, HSTName, finalTableIsCUR, asAtDate, DG_jobName, DG_jobAgentId, DG_jobExecutionOrder, DG_taskId, status
 							FROM 
 								@BI_rebuildObjectsLog;
 						
@@ -388,10 +388,10 @@ BEGIN
 					END
 				ELSE
 					BEGIN
-						INSERT INTO @BI_rebuildObjectsLog (executingObject, GG_group, layer, finalTableObjectId, finalTableSchema, finalTableName, CURObjectId, CURSchema, CURName, HSTObjectId, HSTSchema, HSTName, finalTableIsCUR, asAtDate, DG_jobName, DG_jobAgentId, DG_taskId, DG_jobExecutionOrder, status)
+						INSERT INTO @BI_rebuildObjectsLog (executingObject, DG_group, layer, finalTableObjectId, finalTableSchema, finalTableName, CURObjectId, CURSchema, CURName, HSTObjectId, HSTSchema, HSTName, finalTableIsCUR, asAtDate, DG_jobName, DG_jobAgentId, DG_taskId, DG_jobExecutionOrder, status)
 							SELECT 
 								 a.executingObject
-								,a.GG_group
+								,a.DG_group
 								,a.layer
 								,a.finalTableObjectId
 								,a.finalTableSchema
@@ -413,7 +413,7 @@ BEGIN
 								dbo.BI_rebuildObjectsLog a
 							WHERE 
 								    a.layer           = @layer
-								AND a.GG_group        = @DG_group
+								AND a.DG_group        = @DG_group
 								AND a.status          = 'NOT EXECUTED'
 								AND a.asAtDate        = @DG_asAtDate
 								AND a.executingObject = @executingObject
@@ -492,7 +492,7 @@ BEGIN
 						@BI_rebuildObjectsLog a
 					WHERE 
 						    a.layer           = @layer
-						AND a.GG_group        = @DG_group
+						AND a.DG_group        = @DG_group
 						AND a.executingObject = @executingObject
 						AND a.status          IN ('NOT EXECUTED','FAIL')
 					ORDER BY
@@ -508,7 +508,7 @@ BEGIN
 								UPDATE @BI_rebuildObjectsLog
 								SET status = 'PROCESSING'
 								WHERE 
-									    GG_group        = @DG_group
+									    DG_group        = @DG_group
 									AND layer           = @layer
 									AND executingObject = @executingObject
 									AND DG_jobAgentId   = @C_DG_jobAgentId
@@ -518,13 +518,13 @@ BEGIN
 								SET a.status = b.status
 								FROM
 									dbo.BI_rebuildObjectsLog a INNER JOIN @BI_rebuildObjectsLog b ON 
-										    b.GG_group        = a.GG_group
+										    b.DG_group        = a.DG_group
 										AND b.layer           = a.layer
 										AND b.executingObject = a.executingObject
 										AND b.DG_jobAgentId   = a.DG_jobAgentId
 										AND b.asAtDate        = a.asAtDate
 								WHERE
-									    a.GG_group        = @DG_group
+									    a.DG_group        = @DG_group
 									AND a.layer           = @layer
 									AND a.executingObject = @executingObject
 									AND a.DG_jobAgentId   = @C_DG_jobAgentId
@@ -595,7 +595,7 @@ BEGIN
 											UPDATE @BI_rebuildObjectsLog
 											SET status = @jobStatus
 											WHERE 
-												    GG_group        = @DG_group
+												    DG_group        = @DG_group
 												AND layer           = @layer
 												AND executingObject = @executingObject
 												AND DG_jobAgentId   = @C_DG_jobAgentId
@@ -605,13 +605,13 @@ BEGIN
 											SET a.status = b.status
 											FROM
 												dbo.BI_rebuildObjectsLog a INNER JOIN @BI_rebuildObjectsLog b ON 
-													    b.GG_group        = a.GG_group
+													    b.DG_group        = a.DG_group
 													AND b.layer           = a.layer
 													AND b.executingObject = a.executingObject
 													AND b.DG_jobAgentId   = a.DG_jobAgentId
 													AND b.asAtDate        = a.asAtDate
 											WHERE
-												    a.GG_group        = @DG_group
+												    a.DG_group        = @DG_group
 												AND a.layer           = @layer
 												AND a.executingObject = @executingObject
 												AND a.DG_jobAgentId   = @C_DG_jobAgentId
@@ -634,7 +634,7 @@ BEGIN
 													UPDATE @BI_rebuildObjectsLog
 													SET status = @jobStatus
 													WHERE 
-														    GG_group        = @DG_group
+														    DG_group        = @DG_group
 														AND layer           = @layer
 														AND executingObject = @executingObject
 														AND DG_jobAgentId   = @C_DG_jobAgentId
@@ -644,13 +644,13 @@ BEGIN
 													SET a.status = b.status
 													FROM
 														dbo.BI_rebuildObjectsLog a INNER JOIN @BI_rebuildObjectsLog b ON 
-															    b.GG_group        = a.GG_group
+															    b.DG_group        = a.DG_group
 															AND b.layer           = a.layer
 															AND b.executingObject = a.executingObject
 															AND b.DG_jobAgentId   = a.DG_jobAgentId
 															AND b.asAtDate        = a.asAtDate
 													WHERE
-														    a.GG_group        = @DG_group
+														    a.DG_group        = @DG_group
 														AND a.layer           = @layer
 														AND a.executingObject = @executingObject
 														AND a.DG_jobAgentId   = @C_DG_jobAgentId
@@ -803,7 +803,7 @@ BEGIN
 										UPDATE @BI_rebuildObjectsLog
 										SET status = 'FAIL'
 										WHERE 
-												GG_group        = @DG_group
+												DG_group        = @DG_group
 											AND layer           = @layer
 											AND executingObject = @executingObject
 											AND DG_jobAgentId   = @C_DG_jobAgentId
@@ -813,13 +813,13 @@ BEGIN
 										SET a.status = b.status
 										FROM
 											dbo.BI_rebuildObjectsLog a INNER JOIN @BI_rebuildObjectsLog b ON 
-												    b.GG_group        = a.GG_group
+												    b.DG_group        = a.DG_group
 												AND b.layer           = a.layer
 												AND b.executingObject = a.executingObject
 												AND b.DG_jobAgentId   = a.DG_jobAgentId
 												AND b.asAtDate        = a.asAtDate
 										WHERE
-											    a.GG_group        = @DG_group
+											    a.DG_group        = @DG_group
 											AND a.layer           = @layer
 											AND a.executingObject = @executingObject
 											AND a.DG_jobAgentId   = @C_DG_jobAgentId
@@ -835,7 +835,7 @@ BEGIN
 					SET a.status = b.status
 					FROM
 						dbo.BI_rebuildObjectsLog a INNER JOIN @BI_rebuildObjectsLog b ON 
-							    b.GG_group        = a.GG_group
+							    b.DG_group        = a.DG_group
 							AND b.layer           = a.layer
 							AND b.executingObject = a.executingObject
 							AND b.DG_jobAgentId   = a.DG_jobAgentId
