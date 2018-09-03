@@ -1,4 +1,5 @@
-ALTER PROCEDURE dbo.sp_reCreateSequenceColumn 
+
+CREATE PROCEDURE dbo.sp_reCreateSequenceColumn 
 	(
 		 @tableName             NVARCHAR(256) = N''
 		,@sequenceColumnName    NVARCHAR(128) = N''
@@ -338,7 +339,6 @@ BEGIN
 					SET @sqlScript = @sqlScript + ' ORDER BY
 							' + @orderByColumnName + ' ASC';
 					EXEC(@sqlScript);
-					SELECT @sqlScript
 				END TRY
 				BEGIN CATCH
 					SET @continue = 0;
@@ -370,7 +370,6 @@ BEGIN
 						END
 				
 				--INSERTING RECREATING DATA
-				SELECT @sequenceColumnIsIdentity;
 					IF(@sequenceColumnIsIdentity = 1)
 						BEGIN
 							SET @sqlScript = 'INSERT INTO ' + @tableName + ' (' + @columns + ') SELECT ' + @columns + ' FROM ' + @tempTableName + ' ORDER BY ' + @sequenceColumnName + ' ASC';
@@ -380,8 +379,11 @@ BEGIN
 							SET @sqlScript = 'INSERT INTO ' + @tableName + ' (' + @columns + ',' + @sequenceColumnName + ') SELECT ' + @columns + ',' + @sequenceColumnName + ' FROM ' + @tempTableName + ' ORDER BY ' + @sequenceColumnName + ' ASC';
 						END
 					EXEC(@sqlScript)
+					
+				COMMIT TRANSACTION;
 			END TRY
 			BEGIN CATCH
+				ROLLBACK TRANSACTION;
 				SET @continue = 0;
 				SET @message  = 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 				SET @SQL      = @sqlScript
@@ -400,7 +402,13 @@ BEGIN
 					SET @message  = 'SQL Error: Code(' + ISNULL(CONVERT(VARCHAR(20),ERROR_NUMBER()),'') + ') - '+ ISNULL(ERROR_MESSAGE(),'');
 					SET @SQL      = @sqlScript
 				END CATCH
-			END			
+			END
+	
+	SET @status = @continue;
+	
+	IF(@continue = 1)
+		BEGIN
+			SET @message = 'SUCCESS';
+		END
 END
 GO
-
