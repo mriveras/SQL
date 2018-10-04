@@ -1,4 +1,5 @@
-CREATE PROCEDURE dbo.sp_dropSQLAgentJobsNotUsedInDataGovernor AS
+CREATE PROCEDURE dbo.sp_dropSQLAgentJobsNotUsedInDataGovernor 
+AS
 BEGIN
 	DECLARE
 		 @continue           BIT           = 1
@@ -38,13 +39,13 @@ BEGIN
 						SELECT 
 							CONVERT(NVARCHAR(128),a.job_id)
 						FROM 
-							msdb.dbo.sysjobs a LEFT JOIN ' +  @dataGovernorDBName + '.ProcessGroup b ON
+							msdb.dbo.sysjobs a LEFT JOIN ' +  @dataGovernorDBName + '.dbo.ProcessGroup b ON
 								b.AgentJobID = a.job_id
 						WHERE
 							    b.AgentJobID IS NULL
 							AND a.name       LIKE ''DataGovernor (%''
 				';
-
+				
 				EXEC(@SQLscript);
 			END TRY
 			BEGIN CATCH
@@ -66,8 +67,9 @@ BEGIN
 				BEGIN
 					BEGIN TRY
 						SET @SQLscript = N'EXEC msdb.dbo.sp_delete_job @job_id = ''' + @jobId_C + '''';
-						EXEC(@SQLscript);
 						
+						EXEC(@SQLscript);
+
 						FETCH NEXT FROM DSQLAJNUIDG_cursor INTO @jobId_C;
 					END TRY
 					BEGIN CATCH
