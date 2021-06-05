@@ -6,11 +6,6 @@ AS
 /*
 	Created by:    Mauricio Rivera
 	Creation Date: 26 Jul 2018
-	
-	MODIFICATIONS:
-	
-		USER	DATE		JIRA ISSUE	JIRA DESCRIPTION
-		MR		26/07/2018	BI-508		SP to Execute Jobs in Data Governor
 */
 BEGIN
 	DECLARE 
