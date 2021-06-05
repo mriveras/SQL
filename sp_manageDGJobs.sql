@@ -9,11 +9,6 @@ CREATE PROCEDURE [dbo].[sp_manageDGJobs]
 /*
 	Developed by: Mauricio Rivera
 	Date: 2 Aug 2018
-	
-	MODIFICATIONS
-		USER	DATE		JIRA	DESCRIPTION
-		MR		02/08/2018	BI-508	SP to Execute Jobs in Data Governor
-
 */
 AS
 BEGIN
