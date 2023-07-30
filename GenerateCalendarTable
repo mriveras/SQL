@@ -1,0 +1,52 @@
+CREATE PROCEDURE fin.GenerateCalendarTable (
+	 @DateFrom DATE = '01 Dec 2018'
+	,@DateTo   DATE = '31 Dec 2030'
+)
+AS
+/*
+  AUTHOR: Mauricio Rivera Senior
+  DATE: 30 JUL 2023
+  DESCRIPTION: Procedure used to create a calendar table. Using the input parameters to define the scope of the data.
+
+  NOTE: The name of the Calendar Table is defined in the code. Later will publish a dinamic one that obtains the name of the table from an input parameter.
+  So far, just need to change the name to the name you desire. Current Name is fin.Calendar.
+*/
+BEGIN
+	DROP TABLE IF EXISTS #RawData;
+	;WITH cte_data AS (
+			SELECT 
+				CONVERT(DATE,@DateFrom) AS [DATE]
+		UNION ALL
+			SELECT 
+				DATEADD(DAY,1,CONVERT(DATE,a.[DATE])) AS [DATE]
+			FROM
+				cte_data a
+			WHERE
+				DATEADD(DAY,1,CONVERT(DATE,a.[DATE])) <= @DateTo
+	)
+	SELECT
+		a.[DATE]
+	INTO #RawData
+	FROM
+		cte_data a
+	OPTION(MAXRECURSION 0)
+	
+	DROP TABLE IF EXISTS fin.Calendar;
+	SELECT
+		 a.[Date]
+		,CONVERT(VARCHAR(20),YEAR(a.[Date])) + RIGHT('0' + CONVERT(VARCHAR(20),MONTH(a.[Date])),2) + RIGHT('0' + CONVERT(VARCHAR(20),DATEPART(DAY,a.[Date])),2) AS YearMonthDay
+		,CONVERT(VARCHAR(20),a.[Date],106) AS longDate
+		,DATEPART(DAY,a.[Date])	AS Day
+		,MONTH(a.[Date]) AS Month
+		,YEAR(a.[Date]) AS Year
+		,DATEPART(DW,a.[Date]) AS DayOfWeek
+		,DATENAME(MONTH,a.[Date]) AS MonthName
+		,DATENAME(DW,a.[Date]) AS DayOfWeekName
+		,DATENAME(WK,a.[Date]) AS WeekNumber
+		,DATENAME(QQ,a.[Date]) AS QuarterNumber
+	INTO fin.Calendar
+	FROM
+		#RawData a
+	ORDER BY
+		a.[Date];
+END 
